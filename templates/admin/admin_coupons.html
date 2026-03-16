@@ -1,0 +1,216 @@
+{% extends 'base.html' %}
+{% block title %}Manage Coupons – Admin{% endblock %}
+
+{% block content %}
+<div class="container page-container">
+    <div class="admin-header">
+        <h1>🏷️ Manage Coupons</h1>
+        <a href="{{ url_for('admin.dashboard') }}" class="btn-outline">
+            <i class="fas fa-tachometer-alt"></i> Dashboard
+        </a>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1.5fr;gap:28px;align-items:flex-start;">
+
+        <!-- ADD COUPON FORM -->
+        <div class="admin-section" style="padding:24px;">
+            <h2 style="font-family:'Playfair Display',serif;font-size:18px;color:#1b5e20;margin-bottom:20px;">
+                ➕ Create New Coupon
+            </h2>
+            <form method="POST" action="{{ url_for('admin.add_coupon') }}">
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label>Coupon Code *</label>
+                    <input type="text" name="code" placeholder="e.g. FREEDEL, SAVE20"
+                           style="text-transform:uppercase;font-weight:700;letter-spacing:1px;" required>
+                    <small style="color:#888;">Auto-converted to uppercase</small>
+                </div>
+
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label>Description</label>
+                    <input type="text" name="description" placeholder="e.g. Free delivery on any order">
+                </div>
+
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label>Discount Type *</label>
+                    <select name="discount_type" id="discountTypeSelect" onchange="toggleDiscountFields()" required>
+                        <option value="free_delivery">🚚 Free Delivery</option>
+                        <option value="percentage">📊 Percentage Off (%)</option>
+                        <option value="fixed">💰 Fixed Amount Off (₹)</option>
+                    </select>
+                </div>
+
+                <div class="form-group" id="discountValueGroup" style="margin-bottom:14px;display:none;">
+                    <label id="discountValueLabel">Discount Value</label>
+                    <input type="number" name="discount_value" id="discountValueInput"
+                           step="0.01" min="0" placeholder="0" value="0">
+                </div>
+
+                <div class="form-group" id="maxDiscountGroup" style="margin-bottom:14px;display:none;">
+                    <label>Max Discount Amount (₹) — optional</label>
+                    <input type="number" name="max_discount_amount" step="0.01" min="0"
+                           placeholder="e.g. 100 means max ₹100 off">
+                    <small style="color:#888;">Leave empty for no limit</small>
+                </div>
+
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label>Minimum Order Amount (₹)</label>
+                    <input type="number" name="min_order_amount" step="0.01" min="0"
+                           placeholder="0 = no minimum" value="0">
+                </div>
+
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label>Max Uses — optional</label>
+                    <input type="number" name="max_uses" min="1" placeholder="Leave empty for unlimited">
+                </div>
+
+                <div class="form-group" style="margin-bottom:20px;">
+                    <label>Expiry Date — optional</label>
+                    <input type="datetime-local" name="expires_at">
+                    <small style="color:#888;">Leave empty = never expires</small>
+                </div>
+
+                <button type="submit" class="btn-primary" style="width:100%;">
+                    <i class="fas fa-plus"></i> Create Coupon
+                </button>
+            </form>
+        </div>
+
+        <!-- COUPON LIST -->
+        <div>
+            <h2 style="font-family:'Playfair Display',serif;font-size:18px;color:#1b5e20;margin-bottom:16px;">
+                📋 All Coupons ({{ coupons|length }})
+            </h2>
+
+            {% if coupons %}
+            <div style="display:flex;flex-direction:column;gap:12px;">
+                {% for coupon in coupons %}
+                <div style="background:white;border:1.5px solid {% if coupon.is_active %}#a5d6a7{% else %}#e0e0e0{% endif %};border-radius:12px;padding:16px;opacity:{% if coupon.is_active %}1{% else %}0.6{% endif %};">
+                    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
+                        <div style="flex:1;">
+                            <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap;">
+                                <code style="font-size:16px;font-weight:800;background:#e8f5e9;color:#1b5e20;padding:4px 12px;border-radius:8px;letter-spacing:1px;">
+                                    {{ coupon.code }}
+                                </code>
+                                <!-- Type badge -->
+                                {% if coupon.discount_type == 'free_delivery' %}
+                                <span style="background:#e3f2fd;color:#1565c0;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;">🚚 Free Delivery</span>
+                                {% elif coupon.discount_type == 'percentage' %}
+                                <span style="background:#fff3e0;color:#e65100;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;">📊 {{ coupon.discount_value|int }}% OFF</span>
+                                {% elif coupon.discount_type == 'fixed' %}
+                                <span style="background:#ffebee;color:#c62828;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;">💰 ₹{{ coupon.discount_value|int }} OFF</span>
+                                {% endif %}
+                                <!-- Active/Inactive -->
+                                {% if coupon.is_active %}
+                                <span style="background:#e8f5e9;color:#2e7d32;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;">✅ Active</span>
+                                {% else %}
+                                <span style="background:#f5f5f5;color:#999;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;">⛔ Inactive</span>
+                                {% endif %}
+                            </div>
+
+                            {% if coupon.description %}
+                            <p style="font-size:13px;color:#555;margin-bottom:6px;">{{ coupon.description }}</p>
+                            {% endif %}
+
+                            <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:11px;color:#888;">
+                                {% if coupon.min_order_amount and coupon.min_order_amount > 0 %}
+                                <span>Min: ₹{{ coupon.min_order_amount|int }}</span>
+                                {% endif %}
+                                {% if coupon.max_discount_amount %}
+                                <span>Max discount: ₹{{ coupon.max_discount_amount|int }}</span>
+                                {% endif %}
+                                <span>Used: {{ coupon.used_count or 0 }}{% if coupon.max_uses %}/{{ coupon.max_uses }}{% else %} times{% endif %}</span>
+                                {% if coupon.expires_at %}
+                                <span>Expires: {{ coupon.expires_at[:10] }}</span>
+                                {% else %}
+                                <span>Never expires</span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div style="display:flex;gap:8px;flex-shrink:0;">
+                            <!-- Toggle active -->
+                            <button onclick="toggleCoupon('{{ coupon.id }}', {{ 'false' if coupon.is_active else 'true' }})"
+                                    class="btn-sm"
+                                    style="background:{% if coupon.is_active %}#fff3e0{% else %}#e8f5e9{% endif %};color:{% if coupon.is_active %}#e65100{% else %}#2e7d32{% endif %};border-color:{% if coupon.is_active %}#ffcc80{% else %}#a5d6a7{% endif %};"
+                                    title="{% if coupon.is_active %}Deactivate{% else %}Activate{% endif %}">
+                                {% if coupon.is_active %}⛔{% else %}✅{% endif %}
+                            </button>
+                            <!-- Delete -->
+                            <form method="POST" action="{{ url_for('admin.delete_coupon_route', coupon_id=coupon.id) }}"
+                                  onsubmit="return confirm('Delete coupon {{ coupon.code }}?');"
+                                  style="display:inline;">
+                                <button type="submit" class="btn-sm btn-delete" title="Delete">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state" style="padding:40px 20px;">
+                <div class="empty-icon">🏷️</div>
+                <h2>No coupons yet</h2>
+                <p>Create your first coupon using the form on the left.</p>
+            </div>
+            {% endif %}
+
+            <!-- Quick reference -->
+            <div style="background:#fff8e1;border:1px solid #ffcc80;border-radius:12px;padding:16px;margin-top:20px;">
+                <h3 style="font-size:13px;font-weight:700;color:#e65100;margin-bottom:10px;">💡 Coupon Type Guide</h3>
+                <div style="font-size:12px;color:#555;display:flex;flex-direction:column;gap:6px;">
+                    <div><strong>🚚 Free Delivery</strong> — Makes delivery ₹0 regardless of order amount</div>
+                    <div><strong>📊 Percentage Off</strong> — e.g. 10% = customer pays 90% of subtotal</div>
+                    <div><strong>💰 Fixed Amount Off</strong> — e.g. ₹50 = ₹50 deducted from total</div>
+                    <div style="margin-top:6px;color:#888;"><strong>Min Order Amount</strong> — Coupon only works if order is above this amount</div>
+                    <div style="color:#888;"><strong>Max Discount</strong> — Cap on percentage discounts (e.g. 20% off but max ₹100)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleDiscountFields() {
+    const type = document.getElementById('discountTypeSelect').value;
+    const valGroup = document.getElementById('discountValueGroup');
+    const maxGroup = document.getElementById('maxDiscountGroup');
+    const label = document.getElementById('discountValueLabel');
+
+    if (type === 'free_delivery') {
+        valGroup.style.display = 'none';
+        maxGroup.style.display = 'none';
+    } else if (type === 'percentage') {
+        valGroup.style.display = 'block';
+        maxGroup.style.display = 'block';
+        label.textContent = 'Percentage Off (%)';
+        document.getElementById('discountValueInput').placeholder = 'e.g. 10 for 10% off';
+    } else {
+        valGroup.style.display = 'block';
+        maxGroup.style.display = 'none';
+        label.textContent = 'Fixed Amount Off (₹)';
+        document.getElementById('discountValueInput').placeholder = 'e.g. 50 for ₹50 off';
+    }
+}
+
+function toggleCoupon(couponId, makeActive) {
+    fetch(`/admin/coupons/toggle/${couponId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_active: makeActive === 'true' || makeActive === true })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        }
+    });
+}
+
+// Initialize fields on load
+toggleDiscountFields();
+</script>
+{% endblock %}

@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+{% block title %}Manage Orders – Admin{% endblock %}
+
+{% block content %}
+<div class="container page-container">
+    <div class="admin-header">
+        <h1>📋 Manage Orders</h1>
+        <a href="{{ url_for('admin.dashboard') }}" class="btn-outline"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+    </div>
+
+    <div class="admin-table-wrap">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Order ID</th>
+                    <th>Date</th>
+                    <th>Items</th>
+                    <th>Total</th>
+                    <th>Delivery</th>
+                    <th>Time Slot</th>
+                    <th>Payment</th>
+                    <th>Status</th>
+                    <th>Update Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in orders %}
+                <tr id="orderRow-{{ order.id }}">
+                    <td><code>#{{ order.id[:8].upper() }}</code></td>
+                    <td><small>{{ order.created_at[:10] if order.created_at else 'N/A' }}</small></td>
+                    <td>
+                        <div class="order-items-mini">
+                            {% if order.items and order.items is iterable and order.items is not string %}
+                                {% for item in order.items[:2] %}
+                                <small>• {{ item.name }} ×{{ item.quantity }}</small>
+                                {% endfor %}
+                                {% if order.items|list|length > 2 %}
+                                <small>+{{ order.items|list|length - 2 }} more</small>
+                                {% endif %}
+                            {% else %}
+                                <small>—</small>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td><strong>{{ currency_symbol }}{{ "%.2f"|format(order.total_price) }}</strong></td>
+                    <td>
+                        <span class="delivery-type-badge {% if order.delivery_type == 'pickup' %}pickup{% else %}delivery{% endif %}">
+                            <i class="fas fa-{% if order.delivery_type == 'pickup' %}store{% else %}truck{% endif %}"></i>
+                            {{ 'Pickup' if order.delivery_type == 'pickup' else 'Delivery' }}
+                        </span>
+                    </td>
+                    <td><small>{{ order.delivery_time_slot or '—' }}</small></td>
+                    <td>
+                        <span class="payment-badge {% if order.payment_status == 'paid' %}paid{% else %}pending{% endif %}">
+                            {{ order.payment_status|title }}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="order-status-badge status-{{ order.order_status|lower|replace(' ', '-') }}" id="statusBadge-{{ order.id }}">
+                            {{ order.order_status }}
+                        </span>
+                    </td>
+                    <td>
+                        <select class="status-select" onchange="updateStatus('{{ order.id }}', this.value)">
+                            <option value="">Change Status…</option>
+                            {% for s in statuses %}
+                            <option value="{{ s }}" {% if order.order_status == s %}selected{% endif %}>{{ s }}</option>
+                            {% endfor %}
+                        </select>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="9" style="text-align:center;padding:40px;">No orders yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if page > 1 or orders|length == 20 %}
+    <div class="pagination">
+        {% if page > 1 %}
+        <a href="?page={{ page - 1 }}" class="page-btn"><i class="fas fa-chevron-left"></i></a>
+        {% endif %}
+        <span class="page-btn active">{{ page }}</span>
+        {% if orders|length == 20 %}
+        <a href="?page={{ page + 1 }}" class="page-btn"><i class="fas fa-chevron-right"></i></a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function updateStatus(orderId, newStatus) {
+    if (!newStatus) return;
+    fetch('/admin/orders/update-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order_id: orderId, status: newStatus })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            const badge = document.getElementById('statusBadge-' + orderId);
+            badge.textContent = newStatus;
+            badge.className = 'order-status-badge status-' + newStatus.toLowerCase().replace(/ /g, '-');
+            showToast('Order status updated!', 'success');
+        } else {
+            showToast('Failed to update status.', 'error');
+        }
+    });
+}
+</script>
+{% endblock %}

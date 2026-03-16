@@ -1,0 +1,145 @@
+{% extends 'base.html' %}
+{% block title %}My Cart – {{ store_name }}{% endblock %}
+
+{% block content %}
+<div class="container page-container">
+    <h1 class="page-title">🛒 My Cart</h1>
+
+    {% if items %}
+    <div class="cart-layout">
+        <!-- CART ITEMS -->
+        <div class="cart-items-col">
+            {% for item in items %}
+            {% set product = item.products or {} %}
+            <div class="cart-item" id="cartItem-{{ item.product_id }}">
+                <div class="cart-item-img">
+                    {% if product.image_url %}
+                    <img src="{{ product.image_url }}" alt="{{ product.name }}" loading="lazy"
+                         onerror="this.src='https://placehold.co/100x100/e8f5e9/2e7d32?text=🛒'">
+                    {% else %}
+                    <div class="no-image-sm">🛒</div>
+                    {% endif %}
+                </div>
+                <div class="cart-item-info">
+                    <a href="{{ url_for('product.product_detail', product_id=item.product_id) }}" class="cart-item-name">{{ product.name }}</a>
+                    <p class="cart-item-category">{{ product.subcategory or product.category }}</p>
+                    <div class="cart-item-price">
+                        <span class="price-current">{{ currency_symbol }}{{ "%.2f"|format(item.discounted_price) }}</span>
+                        {% if product.discount and product.discount > 0 %}
+                        <span class="price-original">{{ currency_symbol }}{{ "%.2f"|format(product.price) }}</span>
+                        <span class="badge-discount-sm">{{ product.discount|int }}% OFF</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="cart-item-controls">
+                    <div class="qty-selector-sm">
+                        <button onclick="updateCartQty('{{ item.product_id }}', {{ item.quantity - 1 }})">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                        <span id="qty-{{ item.product_id }}">{{ item.quantity }}</span>
+                        <button onclick="updateCartQty('{{ item.product_id }}', {{ item.quantity + 1 }})">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                    <p class="cart-item-total" id="total-{{ item.product_id }}">
+                        {{ currency_symbol }}{{ "%.2f"|format(item.item_total) }}
+                    </p>
+                    <button class="btn-remove-cart" onclick="removeFromCart('{{ item.product_id }}')">
+                        <i class="fas fa-trash"></i> Remove
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- ORDER SUMMARY -->
+        <div class="cart-summary-col">
+            <div class="cart-summary-card">
+                <h2>Order Summary</h2>
+                <div class="summary-row">
+                    <span>Subtotal</span>
+                    <span>{{ currency_symbol }}{{ "%.2f"|format(subtotal) }}</span>
+                </div>
+                <div class="summary-row">
+                    <span>Delivery Charge</span>
+                    <span>{% if delivery_charge > 0 %}{{ currency_symbol }}{{ delivery_charge }}{% else %}<span class="text-green">FREE</span>{% endif %}</span>
+                </div>
+                {% if delivery_charge > 0 %}
+                <p class="free-delivery-note">Add {{ currency_symbol }}{{ "%.2f"|format(500 - subtotal) }} more for free delivery</p>
+                {% endif %}
+                <hr>
+                <div class="summary-row total-row">
+                    <span>Total</span>
+                    <span>{{ currency_symbol }}{{ "%.2f"|format(total) }}</span>
+                </div>
+                <a href="{{ url_for('order.checkout') }}" class="btn-checkout">
+                    <i class="fas fa-lock"></i> Proceed to Checkout
+                </a>
+                <a href="{{ url_for('product.products') }}" class="btn-continue-shopping">
+                    <i class="fas fa-arrow-left"></i> Continue Shopping
+                </a>
+            </div>
+
+            <!-- Accepted Payments -->
+            <div class="payment-methods-card">
+                <p>We Accept:</p>
+                <div class="payment-icons-row">
+                    <span>💳 UPI</span>
+                    <span>🏦 Net Banking</span>
+                    <span>💰 Wallet</span>
+                    <span>💵 Card</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-icon">🛒</div>
+        <h2>Your cart is empty</h2>
+        <p>Browse our products and add items to your cart.</p>
+        <a href="{{ url_for('product.products') }}" class="btn-primary">Start Shopping</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function updateCartQty(productId, qty) {
+    fetch('/api/cart/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ product_id: productId, quantity: qty })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            if (qty <= 0) {
+                document.getElementById('cartItem-' + productId)?.remove();
+            } else {
+                document.getElementById('qty-' + productId).textContent = qty;
+            }
+            updateCartBadge(data.cart_count);
+            location.reload();
+        }
+    });
+}
+
+function removeFromCart(productId) {
+    if (!confirm('Remove this item from cart?')) return;
+    fetch('/api/cart/remove', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ product_id: productId })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('cartItem-' + productId)?.remove();
+            updateCartBadge(data.cart_count);
+            location.reload();
+        }
+    });
+}
+</script>
+{% endblock %}

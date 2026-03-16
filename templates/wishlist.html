@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+{% block title %}My Wishlist – {{ store_name }}{% endblock %}
+
+{% block content %}
+<div class="container page-container">
+    <h1 class="page-title">❤️ My Wishlist</h1>
+
+    {% if items %}
+    <div class="products-grid">
+        {% for item in items %}
+        {% set product = item.products or {} %}
+        {% if product %}
+        {% set discounted_price = product.price - (product.price * (product.discount or 0) / 100) %}
+        <div class="product-card" id="wishlistItem-{{ product.id }}">
+            <div class="product-img-wrap">
+                <a href="{{ url_for('product.product_detail', product_id=product.id) }}">
+                    {% if product.image_url %}
+                    <img src="{{ product.image_url }}" alt="{{ product.name }}" loading="lazy"
+                         onerror="this.src='https://placehold.co/300x300/e8f5e9/2e7d32?text=🛒'">
+                    {% else %}
+                    <div class="no-image">🛒</div>
+                    {% endif %}
+                </a>
+                {% if product.discount and product.discount > 0 %}
+                <span class="badge-discount">{{ product.discount|int }}% OFF</span>
+                {% endif %}
+                <button class="wishlist-btn active" onclick="removeWishlistItem('{{ product.id }}')" title="Remove from Wishlist">
+                    <i class="fas fa-heart"></i>
+                </button>
+            </div>
+            <div class="product-info">
+                <p class="product-category">{{ product.subcategory or product.category }}</p>
+                <a href="{{ url_for('product.product_detail', product_id=product.id) }}" class="product-name">{{ product.name }}</a>
+                <div class="product-price">
+                    <span class="price-current">{{ currency_symbol }}{{ "%.2f"|format(discounted_price) }}</span>
+                    {% if product.discount and product.discount > 0 %}
+                    <span class="price-original">{{ currency_symbol }}{{ "%.2f"|format(product.price) }}</span>
+                    {% endif %}
+                </div>
+                <div class="wishlist-card-actions">
+                    <button class="btn-add-cart {% if not product.stock or product.stock == 0 %}disabled{% endif %}"
+                        onclick="moveToCart('{{ product.id }}')"
+                        {% if not product.stock or product.stock == 0 %}disabled{% endif %}>
+                        <i class="fas fa-cart-plus"></i> Move to Cart
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-icon">❤️</div>
+        <h2>Your wishlist is empty</h2>
+        <p>Save your favourite products to buy them later.</p>
+        <a href="{{ url_for('product.products') }}" class="btn-primary">Browse Products</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function removeWishlistItem(productId) {
+    fetch('/api/wishlist/remove', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ product_id: productId })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('wishlistItem-' + productId)?.remove();
+            showToast('Removed from wishlist', 'info');
+        }
+    });
+}
+
+function moveToCart(productId) {
+    fetch('/api/cart/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ product_id: productId, quantity: 1 })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            updateCartBadge(data.cart_count);
+            showToast('Added to cart!', 'success');
+            removeWishlistItem(productId);
+        }
+    });
+}
+</script>
+{% endblock %}

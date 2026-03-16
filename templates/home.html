@@ -1,0 +1,258 @@
+{% extends 'base.html' %}
+{% block title %}{{ store_name }} – Fresh Groceries Delivered{% endblock %}
+
+{% block content %}
+
+<!-- HERO BANNER SLIDER -->
+<section class="hero-slider">
+    <div class="slider-track" id="sliderTrack">
+        <div class="slide slide-1">
+            <div class="slide-content">
+                <p class="slide-tag">Fresh & Organic</p>
+                <h1>Farm Fresh <br><span>Vegetables</span> Delivered</h1>
+                <p class="slide-sub">Order before 10 AM for same-day delivery</p>
+                <a href="{{ url_for('product.products', category='Grocery', subcategory='Fresh Vegetables') }}" class="btn-hero">Shop Now <i class="fas fa-arrow-right"></i></a>
+            </div>
+            <div class="slide-img">🥦🥕🍅🥬</div>
+        </div>
+        <div class="slide slide-2">
+            <div class="slide-content">
+                <p class="slide-tag">Best Deals</p>
+                <h1>Snacks &amp; <br><span>Drinks</span> Galore</h1>
+                <p class="slide-sub">Up to 30% off on your favourite brands</p>
+                <a href="{{ url_for('product.products', category='Snacks & Drinks') }}" class="btn-hero">Explore <i class="fas fa-arrow-right"></i></a>
+            </div>
+            <div class="slide-img">🍿🥤🍫🧃</div>
+        </div>
+        <div class="slide slide-3">
+            <div class="slide-content">
+                <p class="slide-tag">Personal Care</p>
+                <h1>Beauty &amp; <br><span>Grooming</span> Essentials</h1>
+                <p class="slide-sub">Top brands at unbeatable prices</p>
+                <a href="{{ url_for('product.products', category='Beauty & Personal Care') }}" class="btn-hero">Shop Beauty <i class="fas fa-arrow-right"></i></a>
+            </div>
+            <div class="slide-img">💄🧴💆🪥</div>
+        </div>
+    </div>
+    <button class="slider-btn prev" id="sliderPrev"><i class="fas fa-chevron-left"></i></button>
+    <button class="slider-btn next" id="sliderNext"><i class="fas fa-chevron-right"></i></button>
+    <div class="slider-dots" id="sliderDots">
+        <span class="dot active" data-index="0"></span>
+        <span class="dot" data-index="1"></span>
+        <span class="dot" data-index="2"></span>
+    </div>
+</section>
+
+<!-- USP STRIP -->
+<section class="usp-strip">
+    <div class="container usp-grid">
+        <div class="usp-item"><i class="fas fa-truck"></i><div><strong>Free Delivery</strong><span>On orders above ₹500</span></div></div>
+        <div class="usp-item"><i class="fas fa-leaf"></i><div><strong>Fresh Products</strong><span>Sourced daily</span></div></div>
+        <div class="usp-item"><i class="fas fa-shield-alt"></i><div><strong>Secure Payment</strong><span>100% safe checkout</span></div></div>
+        <div class="usp-item"><i class="fas fa-headset"></i><div><strong>24/7 Support</strong><span>We're here to help</span></div></div>
+    </div>
+</section>
+
+<!-- CATEGORY GRID -->
+<section class="section">
+    <div class="container">
+        <div class="section-header">
+            <h2>Shop by Category</h2>
+            <a href="{{ url_for('product.products') }}" class="view-all">View All <i class="fas fa-arrow-right"></i></a>
+        </div>
+        <div class="category-grid-home">
+            {% for cat, subs in categories.items() %}
+            <div class="cat-card" onclick="location.href='{{ url_for('product.products', category=cat) }}'">
+                <div class="cat-card-icon">{{ category_icons.get(cat, '📦') }}</div>
+                <h3>{{ cat }}</h3>
+                <p>{{ subs|length }} subcategories</p>
+                <div class="cat-card-subs">
+                    {% for sub in subs[:3] %}
+                    <a href="{{ url_for('product.products', category=cat, subcategory=sub) }}" onclick="event.stopPropagation()">{{ sub }}</a>
+                    {% endfor %}
+                    {% if subs|length > 3 %}<span class="more-subs">+{{ subs|length - 3 }} more</span>{% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- 🔥 TRENDING THIS WEEK -->
+{% if trending_products %}
+<section class="section section-alt">
+    <div class="container">
+        <div class="section-header">
+            <h2><span class="rec-badge rec-trending">🔥 Trending</span> This Week</h2>
+            <a href="{{ url_for('product.products') }}" class="view-all">View All <i class="fas fa-arrow-right"></i></a>
+        </div>
+        <p class="rec-subtitle">Most ordered products by our customers</p>
+        <div class="products-grid">
+            {% for product in trending_products %}
+            {% include '_product_card.html' %}
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- 💰 BEST DEALS -->
+{% if best_deals %}
+<section class="section best-deals-section">
+    <div class="container">
+        <div class="section-header">
+            <h2><span class="rec-badge rec-deals">💰 Best Deals</span> Biggest Discounts</h2>
+            <a href="{{ url_for('product.products') }}" class="view-all">View All <i class="fas fa-arrow-right"></i></a>
+        </div>
+        <p class="rec-subtitle">Save more on these heavily discounted products</p>
+        <div class="products-grid">
+            {% for product in best_deals %}
+            {% include '_product_card.html' %}
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- PROMO BANNER -->
+<section class="promo-banner">
+    <div class="container promo-grid">
+        <div class="promo-card promo-green">
+            <div>
+                <h3>Fresh Fruits &amp; Veggies</h3>
+                <p>Handpicked daily from local farms</p>
+                <a href="{{ url_for('product.products', category='Grocery', subcategory='Fresh Fruits') }}" class="btn-promo">Order Now</a>
+            </div>
+            <span class="promo-emoji">🍎🥕</span>
+        </div>
+        <div class="promo-card promo-orange">
+            <div>
+                <h3>Store Pickup</h3>
+                <p>Order online, pick up at our store</p>
+                <a href="{{ url_for('order.checkout') }}" class="btn-promo">Learn More</a>
+            </div>
+            <span class="promo-emoji">🏪</span>
+        </div>
+    </div>
+</section>
+
+<!-- 🆕 NEWLY ADDED -->
+{% if newly_added %}
+<section class="section section-alt">
+    <div class="container">
+        <div class="section-header">
+            <h2><span class="rec-badge rec-new">🆕 Just Arrived</span> New Products</h2>
+            <a href="{{ url_for('product.products') }}" class="view-all">View All <i class="fas fa-arrow-right"></i></a>
+        </div>
+        <p class="rec-subtitle">Fresh additions to our store — be the first to try them</p>
+        <div class="products-grid">
+            {% for product in newly_added %}
+            {% include '_product_card.html' %}
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- 🔁 BUY AGAIN (only for logged-in users who have ordered before) -->
+{% if buy_again_products %}
+<section class="section buy-again-section">
+    <div class="container">
+        <div class="section-header">
+            <h2><span class="rec-badge rec-buyagain">🔁 Buy Again</span> Your Past Orders</h2>
+            <a href="{{ url_for('order.my_orders') }}" class="view-all">View Orders <i class="fas fa-arrow-right"></i></a>
+        </div>
+        <p class="rec-subtitle">Quickly reorder products you've bought before</p>
+        <div class="products-grid">
+            {% for product in buy_again_products %}
+            {% include '_product_card.html' %}
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- ⭐ FEATURED PRODUCTS -->
+{% if featured_products %}
+<section class="section section-alt">
+    <div class="container">
+        <div class="section-header">
+            <h2>⭐ Featured Products</h2>
+            <a href="{{ url_for('product.products') }}" class="view-all">View All <i class="fas fa-arrow-right"></i></a>
+        </div>
+        <div class="products-grid">
+            {% for product in featured_products %}
+            {% include '_product_card.html' %}
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- GROCERY PRODUCTS -->
+{% if grocery_products %}
+<section class="section">
+    <div class="container">
+        <div class="section-header">
+            <h2>🛒 Grocery Essentials</h2>
+            <a href="{{ url_for('product.products', category='Grocery') }}" class="view-all">View All <i class="fas fa-arrow-right"></i></a>
+        </div>
+        <div class="products-grid">
+            {% for product in grocery_products %}
+            {% include '_product_card.html' %}
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- SNACKS & DRINKS -->
+{% if snack_products %}
+<section class="section section-alt">
+    <div class="container">
+        <div class="section-header">
+            <h2>🍿 Snacks &amp; Drinks</h2>
+            <a href="{{ url_for('product.products', category='Snacks & Drinks') }}" class="view-all">View All <i class="fas fa-arrow-right"></i></a>
+        </div>
+        <div class="products-grid">
+            {% for product in snack_products %}
+            {% include '_product_card.html' %}
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- BEAUTY PRODUCTS -->
+{% if beauty_products %}
+<section class="section">
+    <div class="container">
+        <div class="section-header">
+            <h2>💄 Beauty &amp; Personal Care</h2>
+            <a href="{{ url_for('product.products', category='Beauty & Personal Care') }}" class="view-all">View All <i class="fas fa-arrow-right"></i></a>
+        </div>
+        <div class="products-grid">
+            {% for product in beauty_products %}
+            {% include '_product_card.html' %}
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- APP DOWNLOAD STRIP -->
+<section class="app-strip">
+    <div class="container app-strip-inner">
+        <div>
+            <h2>Shop smarter with Ansari General Store</h2>
+            <p>Get exclusive deals, real-time order tracking, and quick reorders.</p>
+        </div>
+        <div class="app-badges">
+            <a href="#" class="app-badge"><i class="fab fa-google-play"></i> Google Play</a>
+            <a href="#" class="app-badge"><i class="fab fa-apple"></i> App Store</a>
+        </div>
+    </div>
+</section>
+
+{% endblock %}
+

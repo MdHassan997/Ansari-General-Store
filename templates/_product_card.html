@@ -1,0 +1,46 @@
+{% set discounted_price = product.price - (product.price * product.discount / 100) %}
+<div class="product-card" data-id="{{ product.id }}">
+    <div class="product-img-wrap">
+        <a href="{{ url_for('product.product_detail', product_id=product.id) }}">
+            {% if product.image_url %}
+            <img src="{{ product.image_url }}" alt="{{ product.name }}" loading="lazy" onerror="this.src='https://placehold.co/300x300/e8f5e9/2e7d32?text=🛒'">
+            {% else %}
+            <div class="no-image">🛒</div>
+            {% endif %}
+        </a>
+        {% if product.discount and product.discount > 0 %}
+        <span class="badge-discount">{{ product.discount|int }}% OFF</span>
+        {% endif %}
+        {% if product.stock and product.stock <= 5 and product.stock > 0 %}
+        <span class="badge-stock">Only {{ product.stock }} left!</span>
+        {% elif not product.stock or product.stock == 0 %}
+        <span class="badge-out">Out of Stock</span>
+        {% endif %}
+        <button class="wishlist-btn" onclick="toggleWishlist('{{ product.id }}', this)" title="Add to Wishlist">
+            <i class="far fa-heart"></i>
+        </button>
+    </div>
+    <div class="product-info">
+        <p class="product-category">{{ product.subcategory or product.category }}</p>
+        <a href="{{ url_for('product.product_detail', product_id=product.id) }}" class="product-name">{{ product.name }}</a>
+        <div class="product-rating">
+            {% set rating = product.rating or 4 %}
+            {% for i in range(5) %}
+            <i class="fa{% if i < rating|int %}s{% else %}r{% endif %} fa-star"></i>
+            {% endfor %}
+            <span>({{ rating }})</span>
+        </div>
+        <div class="product-price">
+            <span class="price-current">{{ currency_symbol }}{{ "%.2f"|format(discounted_price) }}</span>
+            {% if product.discount and product.discount > 0 %}
+            <span class="price-original">{{ currency_symbol }}{{ "%.2f"|format(product.price) }}</span>
+            {% endif %}
+        </div>
+        <button class="btn-add-cart {% if not product.stock or product.stock == 0 %}disabled{% endif %}"
+            onclick="addToCart('{{ product.id }}')"
+            {% if not product.stock or product.stock == 0 %}disabled{% endif %}>
+            <i class="fas fa-cart-plus"></i>
+            {% if not product.stock or product.stock == 0 %}Out of Stock{% else %}Add to Cart{% endif %}
+        </button>
+    </div>
+</div>

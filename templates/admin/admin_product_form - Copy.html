@@ -1,0 +1,154 @@
+{% extends 'base.html' %}
+{% block title %}{{ action }} Product – Admin{% endblock %}
+
+{% block content %}
+<div class="container page-container">
+    <a href="{{ url_for('admin.products') }}" class="back-link"><i class="fas fa-arrow-left"></i> Back to Products</a>
+    <h1 class="page-title">{% if action == 'Add' %}➕ Add New Product{% else %}✏️ Edit Product{% endif %}</h1>
+
+    <form method="POST" enctype="multipart/form-data" class="admin-form-card">
+        <div class="form-grid">
+            <div class="form-group full-width">
+                <label>Product Name *</label>
+                <input type="text" name="name" value="{{ product.name if product else '' }}" required placeholder="Enter product name">
+            </div>
+
+            <div class="form-group">
+                <label>Category *</label>
+                <select name="category" id="categorySelect" required onchange="updateSubcategories()">
+                    <option value="">Select Category</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat }}" {% if product and product.category == cat %}selected{% endif %}>{{ cat }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Subcategory</label>
+                <select name="subcategory" id="subcategorySelect">
+                    <option value="">Select Subcategory</option>
+                    {% if product and product.subcategory %}
+                    <option value="{{ product.subcategory }}" selected>{{ product.subcategory }}</option>
+                    {% endif %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Price (₹) *</label>
+                <input type="number" name="price" step="0.01" min="0"
+                       value="{{ product.price if product else '' }}" required placeholder="0.00">
+            </div>
+
+            <div class="form-group">
+                <label>Discount (%)</label>
+                <input type="number" name="discount" step="0.1" min="0" max="100"
+                       value="{{ product.discount if product else 0 }}" placeholder="0">
+            </div>
+
+            <div class="form-group">
+                <label>Stock Quantity</label>
+                <input type="number" name="stock" min="0"
+                       value="{{ product.stock if product else 0 }}" placeholder="0">
+            </div>
+
+            <div class="form-group">
+                <label>Rating (1–5)</label>
+                <input type="number" name="rating" min="1" max="5" step="0.1"
+                       value="{{ product.rating if product else 4.0 }}" placeholder="4.0">
+            </div>
+
+            <div class="form-group full-width">
+                <label>Description</label>
+                <textarea name="description" rows="4" placeholder="Describe the product…">{{ product.description if product else '' }}</textarea>
+            </div>
+
+            <div class="form-group full-width">
+                <label>Product Image</label>
+                <input type="file" name="image" accept="image/*" onchange="previewImage(this)">
+                <div id="imagePreview" class="image-preview-wrap">
+                    {% if product and product.image_url %}
+                    <img src="{{ product.image_url }}" alt="Current image" id="previewImg">
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="form-group full-width">
+                <label>Or Image URL</label>
+                <input type="text" name="image_url" value="{{ product.image_url if product else '' }}"
+                       placeholder="https://example.com/image.jpg">
+            </div>
+
+            <div class="form-group full-width">
+                <label class="checkbox-label">
+                    <input type="checkbox" name="is_featured"
+                           {% if product and product.is_featured %}checked{% endif %}>
+                    <span>⭐ Feature this product on homepage</span>
+                </label>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <a href="{{ url_for('admin.products') }}" class="btn-outline">Cancel</a>
+            <button type="submit" class="btn-primary">
+                <i class="fas fa-save"></i>
+                {% if action == 'Add' %}Add Product{% else %}Save Changes{% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const CATEGORIES = {{ categories | tojson }};
+
+function updateSubcategories() {
+    const cat = document.getElementById('categorySelect').value;
+    const subSelect = document.getElementById('subcategorySelect');
+    subSelect.innerHTML = '<option value="">Select Subcategory</option>';
+    if (cat && CATEGORIES[cat]) {
+        CATEGORIES[cat].forEach(sub => {
+            const opt = document.createElement('option');
+            opt.value = sub;
+            opt.textContent = sub;
+            subSelect.appendChild(opt);
+        });
+    }
+}
+
+function previewImage(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = e => {
+            let img = document.getElementById('previewImg');
+            if (!img) {
+                img = document.createElement('img');
+                img.id = 'previewImg';
+                document.getElementById('imagePreview').appendChild(img);
+            }
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+// Init subcategories on page load for edit mode
+window.addEventListener('DOMContentLoaded', () => {
+    const cat = document.getElementById('categorySelect').value;
+    if (cat) {
+        const currentSub = '{{ product.subcategory if product else "" }}';
+        const subSelect = document.getElementById('subcategorySelect');
+        subSelect.innerHTML = '<option value="">Select Subcategory</option>';
+        if (CATEGORIES[cat]) {
+            CATEGORIES[cat].forEach(sub => {
+                const opt = document.createElement('option');
+                opt.value = sub;
+                opt.textContent = sub;
+                if (sub === currentSub) opt.selected = true;
+                subSelect.appendChild(opt);
+            });
+        }
+    }
+});
+</script>
+{% endblock %}

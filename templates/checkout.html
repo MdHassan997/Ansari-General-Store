@@ -1,0 +1,498 @@
+{% extends 'base.html' %}
+{% block title %}Checkout – {{ store_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Coupon Section */
+.coupon-section { background: var(--white); border-radius: var(--radius-md); padding: 20px 24px; border: 1.5px solid var(--gray-200); }
+.coupon-section h2 { font-size: 16px; font-weight: 700; color: var(--green-dark); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+.coupon-input-row { display: flex; gap: 10px; }
+.coupon-input-row input { flex: 1; text-transform: uppercase; font-weight: 600; letter-spacing: 1px; }
+.btn-apply-coupon { background: var(--green); color: white; border: none; padding: 10px 20px; border-radius: var(--radius-sm); font-size: 14px; font-weight: 700; cursor: pointer; white-space: nowrap; transition: var(--transition); font-family: inherit; }
+.btn-apply-coupon:hover { background: var(--green-dark); }
+.btn-apply-coupon:disabled { opacity: .6; cursor: not-allowed; }
+.coupon-result { margin-top: 10px; padding: 10px 14px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 600; display: none; align-items: center; gap: 8px; }
+.coupon-result.success { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; display: flex; }
+.coupon-result.error { background: #ffebee; color: #c62828; border: 1px solid #ffcdd2; display: flex; }
+.btn-remove-coupon { margin-left: auto; background: none; border: none; color: #c62828; cursor: pointer; font-size: 16px; }
+.coupon-hints { margin-top: 10px; }
+.coupon-hints p { font-size: 11px; color: var(--gray-500); margin-bottom: 6px; }
+.coupon-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.coupon-chip { padding: 3px 10px; background: var(--green-pale); border: 1px solid var(--green-light); border-radius: 20px; font-size: 11px; font-weight: 700; color: var(--green-dark); cursor: pointer; transition: var(--transition); }
+.coupon-chip:hover { background: var(--green); color: white; }
+
+/* Savings badge */
+.savings-badge { background: #e8f5e9; color: #2e7d32; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; }
+.summary-row.savings { color: var(--green); font-weight: 600; }
+.summary-row.coupon-row { color: #1565c0; font-weight: 600; }
+.summary-row.discount-row { color: var(--red); font-weight: 600; }
+.checkout-item-discount { font-size: 10px; color: var(--red); font-weight: 700; background: #ffebee; padding: 1px 5px; border-radius: 10px; margin-left: 4px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container page-container">
+    <h1 class="page-title">🔒 Secure Checkout</h1>
+
+    <div class="checkout-layout">
+        <!-- LEFT: Form -->
+        <div class="checkout-form-col">
+
+            <!-- Delivery Method -->
+            <div class="checkout-section">
+                <h2><i class="fas fa-truck"></i> Delivery Method</h2>
+                <div class="delivery-toggle">
+                    <label class="delivery-option active" id="labelDelivery">
+                        <input type="radio" name="delivery_type" value="delivery" id="radioDelivery" checked>
+                        <i class="fas fa-truck"></i>
+                        <div><strong>Home Delivery</strong><span>Delivered to your address</span></div>
+                    </label>
+                    <label class="delivery-option" id="labelPickup">
+                        <input type="radio" name="delivery_type" value="pickup" id="radioPickup">
+                        <i class="fas fa-store"></i>
+                        <div><strong>Store Pickup</strong><span>Collect from our store, pay there</span></div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Delivery Address -->
+            <div class="checkout-section" id="addressSection">
+                <h2><i class="fas fa-map-marker-alt"></i> Delivery Address</h2>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Full Name</label>
+                        <input type="text" id="recipientName" value="{{ user.name if user else '' }}" placeholder="Your full name">
+                    </div>
+                    <div class="form-group">
+                        <label>Phone Number</label>
+                        <input type="tel" id="recipientPhone" value="{{ user.phone if user else '' }}" placeholder="+91 XXXXXXXXXX">
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Street Address</label>
+                        <input type="text" id="streetAddress" placeholder="House no, Street, Area">
+                    </div>
+                    <div class="form-group">
+                        <label>City</label>
+                        <input type="text" id="city" placeholder="City">
+                    </div>
+                    <div class="form-group">
+                        <label>PIN Code</label>
+                        <input type="text" id="pinCode" placeholder="PIN Code" maxlength="6">
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Landmark (optional)</label>
+                        <input type="text" id="landmark" placeholder="Near landmark">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Store Pickup -->
+            <div class="checkout-section hidden" id="pickupSection">
+                <h2><i class="fas fa-store"></i> Store Pickup Details</h2>
+                <div class="pickup-info-box">
+                    <p><strong><i class="fas fa-map-marker-alt"></i> Store Address:</strong> {{ store_address }}</p>
+                    <p><strong><i class="fas fa-clock"></i> Store Hours:</strong> Mon–Sun, 8 AM – 10 PM</p>
+                    <p><strong><i class="fas fa-phone"></i> Phone:</strong> {{ store_phone }}</p>
+                    <p class="pickup-note">💡 Payment will be collected at the store when you pick up your order.</p>
+                </div>
+            </div>
+
+            <!-- Time Slot -->
+            <div class="checkout-section">
+                <h2><i class="fas fa-clock"></i> Select Time Slot</h2>
+                <div class="time-slots-grid">
+                    {% for slot in delivery_slots %}
+                    <label class="time-slot-option">
+                        <input type="radio" name="time_slot" value="{{ slot }}" {% if loop.first %}checked{% endif %}>
+                        <span>{{ slot }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- COUPON SECTION -->
+            <div class="coupon-section">
+                <h2><i class="fas fa-tag"></i> Apply Coupon</h2>
+                <div class="coupon-input-row">
+                    <input type="text" id="couponInput" placeholder="Enter coupon code e.g. FREEDEL"
+                           onkeydown="if(event.key==='Enter'){event.preventDefault();applyCoupon()}">
+                    <button type="button" class="btn-apply-coupon" id="applyCouponBtn" onclick="applyCoupon()">
+                        Apply
+                    </button>
+                </div>
+                <div class="coupon-result" id="couponResult">
+                    <i class="fas fa-check-circle"></i>
+                    <span id="couponMsg"></span>
+                    <button type="button" class="btn-remove-coupon" onclick="removeCoupon()" title="Remove coupon">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="coupon-hints">
+                    <p>Available coupons — click to apply:</p>
+                    <div class="coupon-chips">
+                        <span class="coupon-chip" onclick="quickApplyCoupon('FREEDEL')" title="Free delivery">FREEDEL</span>
+                        <span class="coupon-chip" onclick="quickApplyCoupon('SAVE10')" title="10% off">SAVE10</span>
+                        <span class="coupon-chip" onclick="quickApplyCoupon('FLAT50')" title="₹50 off on ₹300+">FLAT50</span>
+                        <span class="coupon-chip" onclick="quickApplyCoupon('WELCOME15')" title="15% off">WELCOME15</span>
+                        <span class="coupon-chip" onclick="quickApplyCoupon('FLAT100')" title="₹100 off on ₹500+">FLAT100</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Order Notes -->
+            <div class="checkout-section">
+                <h2><i class="fas fa-sticky-note"></i> Order Notes (optional)</h2>
+                <textarea id="orderNotes" placeholder="Any special instructions for your order…" rows="3"></textarea>
+            </div>
+
+            <!-- Payment Method -->
+            <div class="checkout-section">
+                <h2><i class="fas fa-credit-card"></i> Payment Method</h2>
+                <div class="payment-options">
+                    <label class="payment-option active" id="labelOnline">
+                        <input type="radio" name="payment_method" value="online" id="radioOnline" checked>
+                        <i class="fas fa-mobile-alt"></i>
+                        <div><strong>Pay Online</strong><span>UPI, Card, Net Banking, Wallet</span></div>
+                    </label>
+                    <label class="payment-option" id="labelCOD">
+                        <input type="radio" name="payment_method" value="cod" id="radioCOD">
+                        <i class="fas fa-money-bill-wave"></i>
+                        <div><strong>Cash on Delivery</strong><span>Pay when you receive</span></div>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT: Summary -->
+        <div class="checkout-summary-col">
+            <div class="cart-summary-card sticky-summary">
+                <h2>Order Summary</h2>
+
+                <!-- Items with discount shown -->
+                {% for item in items %}
+                {% set product = item.products or {} %}
+                <div class="checkout-item-row">
+                    <span class="checkout-item-name">
+                        {{ product.name }} × {{ item.quantity }}
+                        {% if product.discount and product.discount > 0 %}
+                        <span class="checkout-item-discount">{{ product.discount|int }}% OFF</span>
+                        {% endif %}
+                    </span>
+                    <span>{{ currency_symbol }}{{ "%.2f"|format(item.item_total) }}</span>
+                </div>
+                {% endfor %}
+
+                <hr>
+
+                <!-- Savings from product discounts -->
+                {% if total_savings > 0 %}
+                <div class="summary-row savings">
+                    <span>🎉 Product Savings</span>
+                    <span>– {{ currency_symbol }}{{ "%.2f"|format(total_savings) }}</span>
+                </div>
+                {% endif %}
+
+                <div class="summary-row">
+                    <span>Subtotal</span>
+                    <span>{{ currency_symbol }}{{ "%.2f"|format(subtotal) }}</span>
+                </div>
+
+                <div class="summary-row" id="deliveryRow">
+                    <span>Delivery</span>
+                    <span id="deliveryChargeDisplay">
+                        {% if delivery_charge > 0 %}
+                        {{ currency_symbol }}{{ delivery_charge }}
+                        {% else %}
+                        <span class="text-green">FREE</span>
+                        {% endif %}
+                    </span>
+                </div>
+
+                <!-- Coupon discount row (hidden until coupon applied) -->
+                <div class="summary-row coupon-row" id="couponDiscountRow" style="display:none;">
+                    <span>🏷️ Coupon (<span id="appliedCouponCode"></span>)</span>
+                    <span id="couponDiscountDisplay"></span>
+                </div>
+
+                {% if delivery_charge > 0 %}
+                <p class="free-delivery-note" id="freeDeliveryNote">
+                    Add {{ currency_symbol }}{{ "%.2f"|format(500 - subtotal) }} more for free delivery
+                </p>
+                {% endif %}
+
+                <hr>
+                <div class="summary-row total-row">
+                    <span>Total</span>
+                    <span id="totalDisplay">{{ currency_symbol }}{{ "%.2f"|format(total) }}</span>
+                </div>
+
+                <button class="btn-checkout" id="placeOrderBtn" onclick="placeOrder()">
+                    <i class="fas fa-lock"></i> Place Order
+                </button>
+                <a href="{{ url_for('cart.cart') }}" class="btn-continue-shopping">
+                    <i class="fas fa-arrow-left"></i> Back to Cart
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+const RAZORPAY_KEY = '{{ payment_config.key_id }}';
+const STORE_NAME = '{{ store_name }}';
+const SUBTOTAL = {{ subtotal }};
+const ORIGINAL_DELIVERY = {{ delivery_charge }};
+const CURRENCY_SYMBOL = '{{ currency_symbol }}';
+
+let currentDeliveryCharge = ORIGINAL_DELIVERY;
+let couponDiscountAmount = 0;
+let appliedCouponCode = '';
+
+function getCurrentTotal() {
+    return Math.max(SUBTOTAL + currentDeliveryCharge - couponDiscountAmount, 0);
+}
+
+function updateTotalDisplay() {
+    const total = getCurrentTotal();
+    document.getElementById('totalDisplay').textContent = CURRENCY_SYMBOL + total.toFixed(2);
+}
+
+// ── COUPON ────────────────────────────────────────────────
+async function applyCoupon() {
+    const code = document.getElementById('couponInput').value.trim().toUpperCase();
+    if (!code) { showCouponError('Please enter a coupon code'); return; }
+
+    const btn = document.getElementById('applyCouponBtn');
+    btn.disabled = true;
+    btn.textContent = 'Checking…';
+
+    try {
+        const res = await fetch('/api/coupon/validate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code: code, subtotal: SUBTOTAL })
+        });
+        const data = await res.json();
+
+        if (data.valid) {
+            appliedCouponCode = code;
+            couponDiscountAmount = parseFloat(data.discount_amount) || 0;
+            currentDeliveryCharge = parseFloat(data.new_delivery_charge);
+
+            // Update delivery display
+            const delDisplay = document.getElementById('deliveryChargeDisplay');
+            delDisplay.innerHTML = currentDeliveryCharge === 0
+                ? '<span class="text-green">FREE 🎉</span>'
+                : CURRENCY_SYMBOL + currentDeliveryCharge;
+
+            // Show coupon discount row
+            if (couponDiscountAmount > 0) {
+                document.getElementById('couponDiscountRow').style.display = 'flex';
+                document.getElementById('appliedCouponCode').textContent = code;
+                document.getElementById('couponDiscountDisplay').textContent =
+                    '– ' + CURRENCY_SYMBOL + couponDiscountAmount.toFixed(2);
+            }
+
+            // Hide free delivery note if delivery is free
+            const note = document.getElementById('freeDeliveryNote');
+            if (note && currentDeliveryCharge === 0) note.style.display = 'none';
+
+            updateTotalDisplay();
+
+            // Build success message
+            let msg = '✅ Coupon applied! ';
+            if (data.discount_type === 'free_delivery') {
+                msg += 'Free delivery applied!';
+            } else {
+                msg += `You save ${CURRENCY_SYMBOL}${couponDiscountAmount.toFixed(2)}`;
+            }
+            if (data.description) msg += ` — ${data.description}`;
+            showCouponSuccess(msg);
+            showToast('Coupon applied! 🎉', 'success');
+        } else {
+            showCouponError(data.error || 'Invalid coupon code');
+        }
+    } catch (e) {
+        showCouponError('Could not validate coupon. Please try again.');
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Apply';
+}
+
+function quickApplyCoupon(code) {
+    document.getElementById('couponInput').value = code;
+    applyCoupon();
+}
+
+function removeCoupon() {
+    appliedCouponCode = '';
+    couponDiscountAmount = 0;
+    currentDeliveryCharge = ORIGINAL_DELIVERY;
+
+    document.getElementById('couponInput').value = '';
+    document.getElementById('couponResult').style.display = 'none';
+    document.getElementById('couponResult').className = 'coupon-result';
+    document.getElementById('couponDiscountRow').style.display = 'none';
+
+    const delDisplay = document.getElementById('deliveryChargeDisplay');
+    delDisplay.innerHTML = ORIGINAL_DELIVERY > 0
+        ? CURRENCY_SYMBOL + ORIGINAL_DELIVERY
+        : '<span class="text-green">FREE</span>';
+
+    const note = document.getElementById('freeDeliveryNote');
+    if (note) note.style.display = 'block';
+
+    updateTotalDisplay();
+    showToast('Coupon removed', 'info');
+}
+
+function showCouponSuccess(msg) {
+    const el = document.getElementById('couponResult');
+    el.className = 'coupon-result success';
+    document.getElementById('couponMsg').textContent = msg;
+    el.style.display = 'flex';
+}
+
+function showCouponError(msg) {
+    const el = document.getElementById('couponResult');
+    el.className = 'coupon-result error';
+    el.innerHTML = `<i class="fas fa-exclamation-circle"></i> <span>${msg}</span>`;
+    el.style.display = 'flex';
+}
+
+// ── DELIVERY TOGGLE ───────────────────────────────────────
+document.querySelectorAll('input[name="delivery_type"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+        const isDelivery = radio.value === 'delivery';
+        document.getElementById('addressSection').classList.toggle('hidden', !isDelivery);
+        document.getElementById('pickupSection').classList.toggle('hidden', isDelivery);
+        document.querySelectorAll('.delivery-option').forEach(l => l.classList.remove('active'));
+        radio.closest('.delivery-option').classList.add('active');
+    });
+});
+
+// ── PAYMENT TOGGLE ────────────────────────────────────────
+document.querySelectorAll('input[name="payment_method"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+        document.querySelectorAll('.payment-option').forEach(l => l.classList.remove('active'));
+        radio.closest('.payment-option').classList.add('active');
+    });
+});
+document.querySelectorAll('input[name="payment_method"]:checked').forEach(r =>
+    r.closest('.payment-option').classList.add('active')
+);
+
+// ── FORM DATA ─────────────────────────────────────────────
+function getFormData() {
+    const deliveryType = document.querySelector('input[name="delivery_type"]:checked').value;
+    const paymentMethod = document.querySelector('input[name="payment_method"]:checked').value;
+    const timeSlot = document.querySelector('input[name="time_slot"]:checked')?.value || '';
+    const notes = document.getElementById('orderNotes').value;
+    let address = '';
+
+    if (deliveryType === 'delivery') {
+        const name = document.getElementById('recipientName').value.trim();
+        const phone = document.getElementById('recipientPhone').value.trim();
+        const street = document.getElementById('streetAddress').value.trim();
+        const city = document.getElementById('city').value.trim();
+        const pin = document.getElementById('pinCode').value.trim();
+        const landmark = document.getElementById('landmark').value.trim();
+
+        if (!name || !phone || !street || !city || !pin) {
+            showToast('Please fill all required address fields.', 'error');
+            return null;
+        }
+        address = `${name}, ${phone}, ${street}${landmark ? ', ' + landmark : ''}, ${city} - ${pin}`;
+    }
+
+    return { deliveryType, paymentMethod, timeSlot, notes, address };
+}
+
+// ── PLACE ORDER ───────────────────────────────────────────
+async function placeOrder() {
+    const btn = document.getElementById('placeOrderBtn');
+    const formData = getFormData();
+    if (!formData) return;
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing…';
+
+    const body = new FormData();
+    body.append('delivery_type', formData.deliveryType);
+    body.append('delivery_address', formData.address);
+    body.append('delivery_time_slot', formData.timeSlot);
+    body.append('payment_method', formData.paymentMethod);
+    body.append('notes', formData.notes);
+    if (appliedCouponCode) body.append('coupon_code', appliedCouponCode);
+
+    try {
+        const res = await fetch('/order/create', { method: 'POST', body });
+        const data = await res.json();
+
+        if (!data.success) {
+            showToast(data.error || 'Failed to create order.', 'error');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-lock"></i> Place Order';
+            return;
+        }
+
+        if (formData.paymentMethod === 'online' && data.razorpay_order_id) {
+            openRazorpay(data);
+        } else {
+            window.location.href = data.redirect;
+        }
+    } catch (e) {
+        showToast('Network error. Please try again.', 'error');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-lock"></i> Place Order';
+    }
+}
+
+// ── RAZORPAY ──────────────────────────────────────────────
+function openRazorpay(orderData) {
+    const options = {
+        key: RAZORPAY_KEY,
+        amount: orderData.amount,
+        currency: 'INR',
+        name: STORE_NAME,
+        description: 'Grocery Order',
+        order_id: orderData.razorpay_order_id,
+        handler: async function(response) {
+            const verifyRes = await fetch('/payment/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    order_id: orderData.order_id,
+                    razorpay_order_id: response.razorpay_order_id,
+                    razorpay_payment_id: response.razorpay_payment_id,
+                    razorpay_signature: response.razorpay_signature
+                })
+            });
+            const verifyData = await verifyRes.json();
+            if (verifyData.success) {
+                window.location.href = verifyData.redirect;
+            } else {
+                showToast('Payment verification failed. Contact support.', 'error');
+            }
+        },
+        prefill: {
+            name: document.getElementById('recipientName')?.value || '',
+            contact: document.getElementById('recipientPhone')?.value || ''
+        },
+        theme: { color: '#2e7d32' },
+        modal: {
+            ondismiss: function() {
+                document.getElementById('placeOrderBtn').disabled = false;
+                document.getElementById('placeOrderBtn').innerHTML = '<i class="fas fa-lock"></i> Place Order';
+            }
+        }
+    };
+    const rzp = new Razorpay(options);
+    rzp.open();
+}
+</script>
+{% endblock %}

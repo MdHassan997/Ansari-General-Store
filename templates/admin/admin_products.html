@@ -1,0 +1,164 @@
+{% extends 'base.html' %}
+{% block title %}Manage Products – Admin{% endblock %}
+
+{% block content %}
+<div class="container page-container">
+    <div class="admin-header">
+        <h1>📦 Manage Products</h1>
+        <a href="{{ url_for('admin.add_product') }}" class="btn-primary">
+            <i class="fas fa-plus"></i> Add Product
+        </a>
+    </div>
+
+    <!-- Search + Filter Bar -->
+    <div class="admin-search-bar" style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;align-items:center;">
+        <form method="GET" action="{{ url_for('admin.products') }}" style="display:flex;gap:10px;flex:1;min-width:280px;">
+            <div style="position:relative;flex:1;">
+                <i class="fas fa-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#888;font-size:13px;"></i>
+                <input type="text" name="q" value="{{ search }}"
+                       placeholder="Search products by name…"
+                       style="padding-left:36px;width:100%;border:1.5px solid #e0e0e0;border-radius:8px;padding-top:10px;padding-bottom:10px;font-size:14px;">
+            </div>
+            <select name="category" style="border:1.5px solid #e0e0e0;border-radius:8px;padding:10px 14px;font-size:13px;min-width:160px;">
+                <option value="">All Categories</option>
+                {% for cat in categories %}
+                <option value="{{ cat }}" {% if selected_category == cat %}selected{% endif %}>{{ cat }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="btn-primary" style="padding:10px 18px;white-space:nowrap;">
+                <i class="fas fa-search"></i> Search
+            </button>
+            {% if search or selected_category %}
+            <a href="{{ url_for('admin.products') }}" class="btn-outline" style="padding:10px 14px;white-space:nowrap;">
+                <i class="fas fa-times"></i> Clear
+            </a>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- Results count -->
+    <p style="font-size:13px;color:#888;margin-bottom:12px;">
+        Showing <strong>{{ products|length }}</strong> products
+        {% if search %} for "<strong>{{ search }}</strong>"{% endif %}
+        {% if selected_category %} in <strong>{{ selected_category }}</strong>{% endif %}
+    </p>
+
+    {% if products %}
+    <div class="admin-table-wrap">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Image</th>
+                    <th>Name</th>
+                    <th>Category</th>
+                    <th>Price</th>
+                    <th>Discount</th>
+                    <th>Stock</th>
+                    <th>Featured</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for product in products %}
+                <tr>
+                    <td>
+                        {% if product.image_url %}
+                        <img src="{{ product.image_url }}" alt="{{ product.name }}"
+                             style="width:52px;height:52px;object-fit:cover;border-radius:8px;border:1px solid #eee;"
+                             onerror="this.src='https://placehold.co/52x52/e8f5e9/2e7d32?text=🛒'">
+                        {% else %}
+                        <span style="font-size:28px;">🛒</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <strong>{{ product.name }}</strong>
+                        {% if product.description %}
+                        <br><small style="color:#888;font-size:11px;">{{ product.description[:50] }}{% if product.description|length > 50 %}…{% endif %}</small>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span style="font-size:12px;background:#e8f5e9;color:#2e7d32;padding:2px 8px;border-radius:12px;white-space:nowrap;">
+                            {{ product.category }}
+                        </span>
+                        {% if product.subcategory %}
+                        <br><small style="color:#888;font-size:11px;">{{ product.subcategory }}</small>
+                        {% endif %}
+                    </td>
+                    <td><strong>{{ currency_symbol }}{{ "%.2f"|format(product.price) }}</strong></td>
+                    <td>
+                        {% if product.discount and product.discount > 0 %}
+                        <span style="background:#ffebee;color:#c62828;padding:2px 8px;border-radius:12px;font-size:12px;font-weight:700;">
+                            {{ product.discount|int }}% OFF
+                        </span>
+                        {% else %}
+                        <span style="color:#ccc;">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="{% if product.stock > 10 %}text-green{% elif product.stock > 0 %}text-orange{% else %}text-red{% endif %}"
+                              style="font-weight:700;">
+                            {{ product.stock or 0 }}
+                        </span>
+                        {% if product.stock == 0 %}
+                        <br><small style="color:#c62828;font-size:10px;">Out of Stock</small>
+                        {% elif product.stock <= 5 %}
+                        <br><small style="color:#e65100;font-size:10px;">Low Stock</small>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if product.is_featured %}
+                        <span title="Featured on homepage">⭐</span>
+                        {% else %}
+                        <span style="color:#ddd;">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="action-btns">
+                            <a href="{{ url_for('admin.edit_product', product_id=product.id) }}"
+                               class="btn-sm btn-edit" title="Edit">
+                                <i class="fas fa-edit"></i> Edit
+                            </a>
+                            <form method="POST"
+                                  action="{{ url_for('admin.delete_product_route', product_id=product.id) }}"
+                                  onsubmit="return confirm('Delete {{ product.name }}?');"
+                                  style="display:inline;">
+                                <button type="submit" class="btn-sm btn-delete" title="Delete">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if products|length == 50 %}
+    <div class="pagination" style="margin-top:24px;">
+        {% if page > 1 %}
+        <a href="?{% if selected_category %}category={{ selected_category }}&{% endif %}{% if search %}q={{ search }}&{% endif %}page={{ page - 1 }}"
+           class="page-btn"><i class="fas fa-chevron-left"></i></a>
+        {% endif %}
+        <span class="page-btn active">{{ page }}</span>
+        <a href="?{% if selected_category %}category={{ selected_category }}&{% endif %}{% if search %}q={{ search }}&{% endif %}page={{ page + 1 }}"
+           class="page-btn"><i class="fas fa-chevron-right"></i></a>
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-icon">📦</div>
+        <h2>No products found</h2>
+        {% if search or selected_category %}
+        <p>No products match your search. Try different terms.</p>
+        <a href="{{ url_for('admin.products') }}" class="btn-outline">Show All Products</a>
+        {% else %}
+        <p>You haven't added any products yet.</p>
+        <a href="{{ url_for('admin.add_product') }}" class="btn-primary">Add First Product</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+{% block title %}{{ product.name }} – {{ store_name }}{% endblock %}
+
+{% block content %}
+<div class="container page-container">
+    <nav class="breadcrumb">
+        <a href="{{ url_for('main.home') }}">Home</a> /
+        <a href="{{ url_for('product.products', category=product.category) }}">{{ product.category }}</a> /
+        {% if product.subcategory %}
+        <a href="{{ url_for('product.products', category=product.category, subcategory=product.subcategory) }}">{{ product.subcategory }}</a> /
+        {% endif %}
+        <span>{{ product.name }}</span>
+    </nav>
+
+    {% set discounted_price = product.price - (product.price * (product.discount or 0) / 100) %}
+
+    <div class="product-detail-layout">
+        <!-- LEFT: Image -->
+        <div class="product-detail-img-col">
+            <div class="product-detail-img-main">
+                {% if product.image_url %}
+                <img src="{{ product.image_url }}" alt="{{ product.name }}" id="mainProductImg"
+                     onerror="this.src='https://placehold.co/500x500/e8f5e9/2e7d32?text=🛒'">
+                {% else %}
+                <div class="no-image-large">🛒</div>
+                {% endif %}
+            </div>
+            {% if product.discount and product.discount > 0 %}
+            <div class="detail-badge">{{ product.discount|int }}% OFF</div>
+            {% endif %}
+        </div>
+
+        <!-- RIGHT: Info -->
+        <div class="product-detail-info">
+            <p class="detail-category">{{ product.category }} › {{ product.subcategory or '' }}</p>
+            <h1 class="detail-name">{{ product.name }}</h1>
+
+            <div class="detail-rating">
+                {% set rating = product.rating or 4 %}
+                {% for i in range(5) %}
+                <i class="fa{% if i < rating|int %}s{% else %}r{% endif %} fa-star"></i>
+                {% endfor %}
+                <span>{{ rating }}/5</span>
+            </div>
+
+            <div class="detail-price-row">
+                <span class="detail-price">{{ currency_symbol }}{{ "%.2f"|format(discounted_price) }}</span>
+                {% if product.discount and product.discount > 0 %}
+                <span class="detail-price-original">{{ currency_symbol }}{{ "%.2f"|format(product.price) }}</span>
+                <span class="detail-savings">You save {{ currency_symbol }}{{ "%.2f"|format(product.price - discounted_price) }}</span>
+                {% endif %}
+            </div>
+
+            {% if product.stock and product.stock > 0 %}
+            <p class="detail-stock in-stock"><i class="fas fa-check-circle"></i> In Stock ({{ product.stock }} available)</p>
+            {% else %}
+            <p class="detail-stock out-stock"><i class="fas fa-times-circle"></i> Out of Stock</p>
+            {% endif %}
+
+            {% if product.description %}
+            <div class="detail-description">
+                <h3>Description</h3>
+                <p>{{ product.description }}</p>
+            </div>
+            {% endif %}
+
+            {% if product.stock and product.stock > 0 %}
+            <div class="detail-actions">
+                <div class="qty-selector">
+                    <button onclick="changeQty(-1)"><i class="fas fa-minus"></i></button>
+                    <input type="number" id="qtyInput" value="1" min="1" max="{{ product.stock }}">
+                    <button onclick="changeQty(1)"><i class="fas fa-plus"></i></button>
+                </div>
+                <button class="btn-add-cart-lg" onclick="addToCartQty('{{ product.id }}')">
+                    <i class="fas fa-cart-plus"></i> Add to Cart
+                </button>
+                <button class="btn-wishlist-lg" onclick="toggleWishlist('{{ product.id }}', this)">
+                    <i class="far fa-heart"></i> Wishlist
+                </button>
+            </div>
+            {% endif %}
+
+            <div class="detail-meta">
+                <div class="meta-row"><i class="fas fa-truck"></i> Free delivery on orders above ₹500</div>
+                <div class="meta-row"><i class="fas fa-undo"></i> Easy returns within 24 hours</div>
+                <div class="meta-row"><i class="fas fa-shield-alt"></i> Secure payment guaranteed</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Related Products -->
+    {% if related %}
+    <section class="section">
+        <div class="section-header">
+            <h2>Related Products</h2>
+        </div>
+        <div class="products-grid">
+            {% for p in related %}
+            {% set product = p %}
+            {% include '_product_card.html' %}
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function changeQty(delta) {
+    const input = document.getElementById('qtyInput');
+    const max = parseInt(input.max) || 99;
+    let val = parseInt(input.value) + delta;
+    if (val < 1) val = 1;
+    if (val > max) val = max;
+    input.value = val;
+}
+
+function addToCartQty(productId) {
+    const qty = parseInt(document.getElementById('qtyInput').value) || 1;
+    addToCart(productId, qty);
+}
+</script>
+{% endblock %}

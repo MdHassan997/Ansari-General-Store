@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block title %}Order Placed! – {{ store_name }}{% endblock %}
+{% block content %}
+<div class="container page-container">
+    <div class="success-card">
+        <div class="success-icon">✅</div>
+        <h1>Order Placed Successfully!</h1>
+        <p class="success-sub">Thank you for shopping with {{ store_name }}!</p>
+
+        <div class="success-details">
+            <div class="success-row"><span>Order ID</span><strong>#{{ order.id[:8].upper() }}</strong></div>
+            <div class="success-row"><span>Status</span><strong>{{ order.order_status }}</strong></div>
+            <div class="success-row"><span>Delivery</span>
+                <strong>{{ 'Store Pickup' if order.delivery_type == 'pickup' else 'Home Delivery' }}</strong>
+            </div>
+            <div class="success-row"><span>Time Slot</span><strong>{{ order.delivery_time_slot or 'N/A' }}</strong></div>
+            <div class="success-row"><span>Payment</span>
+                <strong class="{% if order.payment_status == 'paid' %}text-green{% endif %}">
+                    {{ order.payment_status|title }}
+                </strong>
+            </div>
+            <div class="success-row"><span>Total</span><strong>{{ currency_symbol }}{{ "%.2f"|format(order.total_price) }}</strong></div>
+        </div>
+
+        {% if order.delivery_type == 'pickup' %}
+        <div class="pickup-reminder">
+            <i class="fas fa-store"></i>
+            <p>Your order will be ready at our store: <strong>{{ store_address }}</strong></p>
+            <p>Please bring this order ID when you come to pick up.</p>
+        </div>
+        {% else %}
+        <p class="delivery-note">
+            <i class="fas fa-truck"></i>
+            Your order will be delivered at: <strong>{{ order.delivery_time_slot }}</strong>
+        </p>
+        {% endif %}
+
+        <div class="success-actions">
+            <a href="{{ url_for('order.order_detail', order_id=order.id) }}" class="btn-primary">Track Order</a>
+            <a href="{{ url_for('product.products') }}" class="btn-outline">Continue Shopping</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

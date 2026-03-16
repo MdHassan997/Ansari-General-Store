@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% block title %}My Orders – {{ store_name }}{% endblock %}
+
+{% block content %}
+<div class="container page-container">
+    <h1 class="page-title">📦 My Orders</h1>
+
+    {% if orders %}
+    <div class="orders-list">
+        {% for order in orders %}
+        <div class="order-card">
+            <div class="order-card-header">
+                <div>
+                    <span class="order-id">Order #{{ order.id[:8].upper() }}</span>
+                    <span class="order-date">{{ order.created_at[:10] if order.created_at else 'N/A' }}</span>
+                </div>
+                <span class="order-status-badge status-{{ order.order_status|lower|replace(' ', '-') }}">
+                    {{ order.order_status }}
+                </span>
+            </div>
+
+            <div class="order-card-body">
+                <div class="order-items-preview">
+                    {% for item in (order.items or [])[:3] %}
+                    <div class="order-item-mini">
+                        {% if item.image_url %}
+                        <img src="{{ item.image_url }}" alt="{{ item.name }}" onerror="this.src='https://placehold.co/60x60/e8f5e9/2e7d32?text=🛒'">
+                        {% endif %}
+                        <span>{{ item.name }} × {{ item.quantity }}</span>
+                    </div>
+                    {% endfor %}
+                    {% if (order.items or [])|length > 3 %}
+                    <span class="more-items">+{{ (order.items|length) - 3 }} more items</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="order-card-footer">
+                <div class="order-meta">
+                    <span><i class="fas fa-{% if order.delivery_type == 'pickup' %}store{% else %}truck{% endif %}"></i>
+                        {{ 'Store Pickup' if order.delivery_type == 'pickup' else 'Home Delivery' }}</span>
+                    <span><i class="fas fa-clock"></i> {{ order.delivery_time_slot or 'Not set' }}</span>
+                    <span class="payment-badge {% if order.payment_status == 'paid' %}paid{% else %}pending{% endif %}">
+                        <i class="fas fa-{% if order.payment_status == 'paid' %}check-circle{% else %}clock{% endif %}"></i>
+                        {{ order.payment_status|title }}
+                    </span>
+                </div>
+                <div class="order-total-row">
+                    <strong>Total: {{ currency_symbol }}{{ "%.2f"|format(order.total_price) }}</strong>
+                    <a href="{{ url_for('order.order_detail', order_id=order.id) }}" class="btn-view-order">
+                        View Details <i class="fas fa-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-icon">📦</div>
+        <h2>No orders yet</h2>
+        <p>You haven't placed any orders. Start shopping!</p>
+        <a href="{{ url_for('product.products') }}" class="btn-primary">Shop Now</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

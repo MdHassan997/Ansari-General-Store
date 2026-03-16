@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{{ store_name }}{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="top-bar">
+    <div class="container">
+        <span><i class="fas fa-phone"></i> {{ store_phone }}</span>
+        <span><i class="fas fa-envelope"></i> {{ store_email }}</span>
+        <span class="ms-auto"><i class="fas fa-truck"></i> Free delivery on orders above ₹500</span>
+    </div>
+</div>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+    <div class="container navbar-inner">
+        <a href="{{ url_for('main.home') }}" class="logo">
+            <span class="logo-icon">🛒</span>
+            <span class="logo-text">Ansari <span>General Store</span></span>
+        </a>
+
+        <!-- Search Bar -->
+        <div class="search-wrapper">
+            <form action="{{ url_for('product.products') }}" method="get" class="search-form">
+                <input type="text" name="q" id="searchInput" placeholder="Search groceries, snacks, beauty…"
+                    value="{{ request.args.get('q', '') }}" autocomplete="off">
+                <button type="submit"><i class="fas fa-search"></i></button>
+            </form>
+            <div class="search-suggestions" id="searchSuggestions"></div>
+        </div>
+
+        <!-- Nav Actions -->
+        <div class="nav-actions">
+            {% if session.get('user_id') %}
+            <div class="nav-dropdown">
+                <button class="nav-btn">
+                    <i class="fas fa-user-circle"></i>
+                    <span class="nav-btn-label">{{ session.get('user_name', 'Account') }}</span>
+                </button>
+                <div class="dropdown-menu">
+                    <a href="{{ url_for('auth.profile') }}"><i class="fas fa-user"></i> Profile</a>
+                    <a href="{{ url_for('order.my_orders') }}"><i class="fas fa-box"></i> My Orders</a>
+                    <a href="{{ url_for('cart.wishlist') }}"><i class="fas fa-heart"></i> Wishlist</a>
+                    {% if session.get('is_admin') %}
+                    <hr>
+                    <a href="{{ url_for('admin.dashboard') }}"><i class="fas fa-tachometer-alt"></i> Admin Panel</a>
+                    {% endif %}
+                    <hr>
+                    <a href="{{ url_for('auth.logout') }}"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                </div>
+            </div>
+            {% else %}
+            <a href="{{ url_for('auth.login') }}" class="nav-btn">
+                <i class="fas fa-user"></i>
+                <span class="nav-btn-label">Login</span>
+            </a>
+            {% endif %}
+
+            <a href="{{ url_for('cart.wishlist') }}" class="nav-btn">
+                <i class="fas fa-heart"></i>
+                <span class="nav-btn-label">Wishlist</span>
+            </a>
+
+            <a href="{{ url_for('cart.cart') }}" class="nav-btn cart-btn">
+                <i class="fas fa-shopping-cart"></i>
+                <span class="nav-btn-label">Cart</span>
+                <span class="cart-badge" id="cartBadge">{{ cart_count }}</span>
+            </a>
+        </div>
+
+        <!-- Hamburger -->
+        <button class="hamburger" id="hamburger"><i class="fas fa-bars"></i></button>
+    </div>
+
+    <!-- Category Nav -->
+    <div class="category-nav">
+        <div class="container category-nav-inner">
+            {% for cat, subs in categories.items() %}
+            <div class="cat-item">
+                <a href="{{ url_for('product.products', category=cat) }}" class="cat-link">
+                    {{ category_icons.get(cat, '📦') }} {{ cat }}
+                    <i class="fas fa-chevron-down"></i>
+                </a>
+                <div class="cat-dropdown">
+                    {% for sub in subs %}
+                    <a href="{{ url_for('product.products', category=cat, subcategory=sub) }}">{{ sub }}</a>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+            <a href="{{ url_for('product.products') }}" class="cat-link all-products-link">
+                <i class="fas fa-th"></i> All Products
+            </a>
+        </div>
+    </div>
+
+    <!-- Mobile Menu -->
+    <div class="mobile-menu" id="mobileMenu">
+        <a href="{{ url_for('main.home') }}">Home</a>
+        {% for cat in categories %}
+        <a href="{{ url_for('product.products', category=cat) }}">{{ cat }}</a>
+        {% endfor %}
+        <a href="{{ url_for('product.products') }}">All Products</a>
+        {% if session.get('user_id') %}
+        <a href="{{ url_for('auth.profile') }}">Profile</a>
+        <a href="{{ url_for('order.my_orders') }}">My Orders</a>
+        <a href="{{ url_for('auth.logout') }}">Logout</a>
+        {% else %}
+        <a href="{{ url_for('auth.login') }}">Login</a>
+        <a href="{{ url_for('auth.signup') }}">Sign Up</a>
+        {% endif %}
+    </div>
+</nav>
+
+<!-- FLASH MESSAGES -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<div class="flash-container">
+    {% for category, message in messages %}
+    <div class="flash flash-{{ category }}">
+        <i class="fas fa-{% if category == 'success' %}check-circle{% elif category == 'error' or category == 'danger' %}exclamation-circle{% elif category == 'warning' %}exclamation-triangle{% else %}info-circle{% endif %}"></i>
+        {{ message }}
+        <button class="flash-close" onclick="this.parentElement.remove()">×</button>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endwith %}
+
+<!-- MAIN CONTENT -->
+<main>
+{% block content %}{% endblock %}
+</main>
+
+<!-- FOOTER -->
+<footer class="footer">
+    <div class="container footer-grid">
+        <div class="footer-col">
+            <h3 class="footer-logo">🛒 Ansari General Store</h3>
+            <p>Your trusted neighborhood grocery store, now online. Fresh products, fair prices, and fast delivery.</p>
+            <div class="social-links">
+                <a href="#"><i class="fab fa-facebook-f"></i></a>
+                <a href="#"><i class="fab fa-instagram"></i></a>
+                <a href="#"><i class="fab fa-whatsapp"></i></a>
+            </div>
+        </div>
+        <div class="footer-col">
+            <h4>Quick Links</h4>
+            <ul>
+                <li><a href="{{ url_for('main.home') }}">Home</a></li>
+                <li><a href="{{ url_for('product.products') }}">All Products</a></li>
+                <li><a href="{{ url_for('cart.cart') }}">Cart</a></li>
+                <li><a href="{{ url_for('cart.wishlist') }}">Wishlist</a></li>
+                <li><a href="{{ url_for('order.my_orders') }}">My Orders</a></li>
+            </ul>
+        </div>
+        <div class="footer-col">
+            <h4>Categories</h4>
+            <ul>
+                {% for cat in categories %}
+                <li><a href="{{ url_for('product.products', category=cat) }}">{{ cat }}</a></li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div class="footer-col">
+            <h4>Contact Us</h4>
+            <ul class="contact-list">
+                <li><i class="fas fa-map-marker-alt"></i> {{ store_address }}</li>
+                <li><i class="fas fa-phone"></i> {{ store_phone }}</li>
+                <li><i class="fas fa-envelope"></i> {{ store_email }}</li>
+                <li><i class="fas fa-clock"></i> Mon–Sun: 8 AM – 10 PM</li>
+            </ul>
+        </div>
+    </div>
+    <div class="footer-bottom">
+        <p>© 2024 {{ store_name }}. All rights reserved. | Designed with ❤️</p>
+        <div class="payment-icons">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/Paytm_Logo_%28standalone%29.svg/200px-Paytm_Logo_%28standalone%29.svg.png" alt="Paytm" height="20">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/UPI-Logo-vector.svg/200px-UPI-Logo-vector.svg.png" alt="UPI" height="20">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Mastercard-logo.svg/200px-Mastercard-logo.svg.png" alt="Mastercard" height="20">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Visa_Inc._logo.svg/200px-Visa_Inc._logo.svg.png" alt="Visa" height="20">
+        </div>
+    </div>
+</footer>
+
+<!-- TOAST NOTIFICATION -->
+<div class="toast" id="toast"></div>
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

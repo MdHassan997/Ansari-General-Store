@@ -1,0 +1,455 @@
+{% extends 'base.html' %}
+{% block title %}{{ action }} Product – Admin{% endblock %}
+
+{% block extra_css %}
+<style>
+.img-search-section {
+    background: #f0f7ff;
+    border: 2px solid #bbdefb;
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 8px;
+}
+.img-search-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+.img-search-header h3 { font-size: 15px; font-weight: 700; color: #1565c0; margin: 0; }
+.img-search-header span { font-size: 12px; color: #5c85c0; background: #dbeafe; padding: 2px 10px; border-radius: 20px; }
+.img-search-bar { display: flex; gap: 10px; margin-bottom: 14px; }
+.img-search-bar input { flex: 1; border: 1.5px solid #bbdefb; border-radius: 8px; padding: 10px 14px; font-size: 14px; background: white; }
+.img-search-bar input:focus { border-color: #1565c0; box-shadow: 0 0 0 3px rgba(21,101,192,.1); outline: none; }
+.btn-img-search { background: #1565c0; color: white; border: none; border-radius: 8px; padding: 10px 20px; font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all .2s; white-space: nowrap; font-family: inherit; }
+.btn-img-search:hover { background: #0d47a1; }
+.btn-img-search:disabled { opacity: .6; cursor: not-allowed; }
+.img-search-sources { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
+.source-btn { padding: 5px 12px; border-radius: 20px; border: 1.5px solid #bbdefb; background: white; font-size: 12px; font-weight: 600; color: #1565c0; cursor: pointer; transition: all .2s; font-family: inherit; }
+.source-btn.active, .source-btn:hover { background: #1565c0; color: white; border-color: #1565c0; }
+.img-results-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; max-height: 400px; overflow-y: auto; padding: 4px; }
+.img-result-card { border: 2px solid #e0e0e0; border-radius: 10px; overflow: hidden; cursor: pointer; transition: all .2s; background: white; position: relative; }
+.img-result-card:hover { border-color: #1565c0; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(21,101,192,.2); }
+.img-result-card.selected { border-color: #2e7d32; box-shadow: 0 0 0 3px rgba(46,125,50,.2); }
+.img-result-card img { width: 100%; height: 110px; object-fit: contain; background: #f0f0f0; padding: 6px; display: block; transition: opacity .3s; }
+.img-result-card img[src=""] { opacity: 0; }
+.img-card-label { padding: 5px 7px; font-size: 10px; color: #666; line-height: 1.3; border-top: 1px solid #f0f0f0; }
+.img-card-source { font-size: 9px; color: #aaa; display: block; }
+.selected-tick { display: none; position: absolute; top: 5px; right: 5px; background: #2e7d32; color: white; width: 20px; height: 20px; border-radius: 50%; align-items: center; justify-content: center; font-size: 11px; }
+.img-result-card.selected .selected-tick { display: flex; }
+.img-search-status { text-align: center; padding: 24px; color: #888; font-size: 13px; }
+.img-search-status i { font-size: 28px; margin-bottom: 8px; display: block; }
+.img-loading { color: #1565c0; }
+.img-error { color: #c62828; }
+.selected-img-preview { display: flex; align-items: center; gap: 12px; background: #e8f5e9; border: 1.5px solid #a5d6a7; border-radius: 10px; padding: 10px 14px; margin-top: 12px; }
+.selected-img-preview img { width: 52px; height: 52px; object-fit: contain; border-radius: 6px; background: white; padding: 4px; flex-shrink: 0; }
+.sel-info { flex: 1; min-width: 0; }
+.sel-info strong { display: block; font-size: 13px; color: #2e7d32; }
+.sel-info small { font-size: 10px; color: #666; word-break: break-all; }
+.btn-clear-img { background: none; border: none; color: #c62828; cursor: pointer; font-size: 18px; padding: 4px; border-radius: 4px; flex-shrink: 0; }
+.btn-clear-img:hover { background: #ffebee; }
+.img-tabs { display: flex; gap: 0; border-bottom: 2px solid #e0e0e0; margin-bottom: 16px; }
+.img-tab { padding: 8px 16px; font-size: 13px; font-weight: 600; color: #888; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all .2s; }
+.img-tab.active { color: #1565c0; border-bottom-color: #1565c0; }
+.img-tab-content { display: none; }
+.img-tab-content.active { display: block; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container page-container">
+    <a href="{{ url_for('admin.products') }}" class="back-link">
+        <i class="fas fa-arrow-left"></i> Back to Products
+    </a>
+    <h1 class="page-title">
+        {% if action == 'Add' %}➕ Add New Product{% else %}✏️ Edit Product{% endif %}
+    </h1>
+
+    <form method="POST" enctype="multipart/form-data" class="admin-form-card">
+        <div class="form-grid">
+
+            <div class="form-group full-width">
+                <label>Product Name *</label>
+                <input type="text" name="name" id="productNameInput"
+                       value="{{ product.name if product else '' }}"
+                       required placeholder="e.g. Tata Salt 1kg">
+            </div>
+
+            <div class="form-group">
+                <label>Category *</label>
+                <select name="category" id="categorySelect" required onchange="updateSubcategories()">
+                    <option value="">Select Category</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat }}" {% if product and product.category == cat %}selected{% endif %}>{{ cat }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Subcategory</label>
+                <select name="subcategory" id="subcategorySelect">
+                    <option value="">Select Subcategory</option>
+                    {% if product and product.subcategory %}
+                    <option value="{{ product.subcategory }}" selected>{{ product.subcategory }}</option>
+                    {% endif %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Price (₹) *</label>
+                <input type="number" name="price" step="0.01" min="0"
+                       value="{{ product.price if product else '' }}" required placeholder="0.00">
+            </div>
+
+            <div class="form-group">
+                <label>Discount (%)</label>
+                <input type="number" name="discount" step="0.1" min="0" max="100"
+                       value="{{ product.discount if product else 0 }}" placeholder="0">
+            </div>
+
+            <div class="form-group">
+                <label>Stock Quantity</label>
+                <input type="number" name="stock" min="0"
+                       value="{{ product.stock if product else 0 }}" placeholder="0">
+            </div>
+
+            <div class="form-group">
+                <label>Rating (1–5)</label>
+                <input type="number" name="rating" min="1" max="5" step="0.1"
+                       value="{{ product.rating if product else 4.0 }}" placeholder="4.0">
+            </div>
+
+            <div class="form-group full-width">
+                <label>Description</label>
+                <textarea name="description" rows="3"
+                          placeholder="Describe the product…">{{ product.description if product else '' }}</textarea>
+            </div>
+
+            <!-- IMAGE SECTION -->
+            <div class="form-group full-width">
+                <label style="font-size:14px;font-weight:700;color:#1b5e20;margin-bottom:12px;display:block;">
+                    🖼️ Product Image
+                </label>
+
+                <div class="img-search-section">
+                    <div class="img-search-header">
+                        <i class="fas fa-magic" style="color:#1565c0;font-size:18px;"></i>
+                        <h3>Image Search Tool</h3>
+                        <span>✅ Copyright-Free</span>
+                    </div>
+
+                    <div class="img-tabs">
+                        <div class="img-tab active" onclick="switchTab('search')">🔍 Search Images</div>
+                        <div class="img-tab" onclick="switchTab('url')">🔗 Paste URL</div>
+                        <div class="img-tab" onclick="switchTab('upload')">📁 Upload File</div>
+                    </div>
+
+                    <!-- TAB: SEARCH -->
+                    <div class="img-tab-content active" id="tab-search">
+                        <div class="img-search-bar">
+                            <input type="text" id="imgSearchInput"
+                                   placeholder="e.g. Tata Salt, Amul Butter, Maggi Noodles…"
+                                   onkeydown="if(event.key==='Enter'){event.preventDefault();searchImages()}">
+                            <button type="button" class="btn-img-search" id="searchImgBtn" onclick="searchImages()">
+                                <i class="fas fa-search"></i> Search
+                            </button>
+                        </div>
+                        <div class="img-search-sources">
+                            <span style="font-size:12px;color:#555;font-weight:600;">Source:</span>
+                            <button type="button" class="source-btn active" id="srcFoodFacts" onclick="setSource('openfoodfacts')">🥫 Food Products DB</button>
+                            <button type="button" class="source-btn" id="srcUnsplash" onclick="setSource('unsplash')">📷 Food Photos</button>
+                        </div>
+                        <div id="imgResultsContainer">
+                            <div class="img-search-status">
+                                <i class="fas fa-image"></i>
+                                Type a product name above and click Search to find copyright-free images
+                            </div>
+                        </div>
+                        <div id="selectedImgPreview" style="display:none" class="selected-img-preview">
+                            <img id="selectedImgThumb" src="" alt="Selected">
+                            <div class="sel-info">
+                                <strong>✅ Image Selected!</strong>
+                                <small id="selectedImgUrl"></small>
+                            </div>
+                            <button type="button" class="btn-clear-img" onclick="clearSelectedImage()" title="Clear">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- TAB: URL -->
+                    <div class="img-tab-content" id="tab-url">
+                        <div class="form-group">
+                            <label>Paste image URL</label>
+                            <input type="text" id="manualUrlInput"
+                                   placeholder="https://example.com/product.jpg"
+                                   oninput="previewManualUrl(this.value)">
+                        </div>
+                        <div id="urlPreviewWrap" style="margin-top:10px;display:none;">
+                            <img id="urlPreviewImg" src="" alt="Preview"
+                                 style="max-width:150px;max-height:150px;object-fit:contain;border-radius:10px;border:1.5px solid #e0e0e0;padding:6px;background:white;"
+                                 onerror="document.getElementById('urlPreviewWrap').style.display='none'">
+                        </div>
+                        <button type="button" class="btn-img-search" style="margin-top:12px;" onclick="useManualUrl()">
+                            <i class="fas fa-check"></i> Use This URL
+                        </button>
+                    </div>
+
+                    <!-- TAB: UPLOAD -->
+                    <div class="img-tab-content" id="tab-upload">
+                        <div class="form-group">
+                            <label>Upload from your computer</label>
+                            <input type="file" name="image" accept="image/*" onchange="previewUploadedImage(this)">
+                            <small style="color:#888;font-size:11px;margin-top:4px;display:block;">JPG, PNG, WebP supported</small>
+                        </div>
+                        <div id="uploadPreviewWrap" style="margin-top:10px;display:none;">
+                            <img id="uploadPreviewImg" src="" alt="Preview"
+                                 style="max-width:150px;max-height:150px;object-fit:contain;border-radius:10px;border:1.5px solid #a5d6a7;padding:6px;background:white;">
+                            <p style="font-size:12px;color:#2e7d32;margin-top:6px;font-weight:600;">✅ Image ready to upload</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Hidden URL field -->
+                <input type="hidden" name="image_url" id="finalImageUrl"
+                       value="{{ product.image_url if product else '' }}">
+
+                {% if product and product.image_url %}
+                <div style="margin-top:10px;">
+                    <p style="font-size:12px;color:#888;margin-bottom:6px;">Current image:</p>
+                    <img src="{{ product.image_url }}" alt="Current"
+                         style="max-width:100px;max-height:100px;object-fit:contain;border-radius:8px;border:1.5px solid #e0e0e0;padding:4px;background:white;"
+                         onerror="this.style.display='none'">
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="form-group full-width">
+                <label class="checkbox-label">
+                    <input type="checkbox" name="is_featured"
+                           {% if product and product.is_featured %}checked{% endif %}>
+                    <span>⭐ Feature this product on homepage</span>
+                </label>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <a href="{{ url_for('admin.products') }}" class="btn-outline">Cancel</a>
+            <button type="submit" class="btn-primary">
+                <i class="fas fa-save"></i>
+                {% if action == 'Add' %}Add Product{% else %}Save Changes{% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const CATEGORIES = {{ categories | tojson }};
+let currentSource = 'openfoodfacts';
+
+function switchTab(tab) {
+    ['search','url','upload'].forEach((t, i) => {
+        document.querySelectorAll('.img-tab')[i].classList.toggle('active', t === tab);
+        document.getElementById('tab-' + t).classList.toggle('active', t === tab);
+    });
+}
+
+function setSource(src) {
+    currentSource = src;
+    document.getElementById('srcFoodFacts').classList.toggle('active', src === 'openfoodfacts');
+    document.getElementById('srcUnsplash').classList.toggle('active', src === 'unsplash');
+    const q = document.getElementById('imgSearchInput').value.trim();
+    if (q) searchImages();
+}
+
+async function searchImages() {
+    const query = document.getElementById('imgSearchInput').value.trim();
+    if (!query) { showStatus('', 'fa-exclamation-circle', 'Please enter a product name'); return; }
+
+    const btn = document.getElementById('searchImgBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Searching…';
+    showStatus('img-loading', 'fa-spinner fa-spin', 'Searching for "' + query + '"…');
+
+    try {
+        let results = currentSource === 'openfoodfacts'
+            ? await searchOpenFoodFacts(query)
+            : await searchUnsplash(query);
+
+        if (!results.length) {
+            results = currentSource === 'openfoodfacts'
+                ? await searchUnsplash(query)
+                : await searchOpenFoodFacts(query);
+        }
+        renderResults(results, query);
+    } catch(e) {
+        showStatus('img-error', 'fa-exclamation-triangle', 'Search failed. Try the URL or Upload tab instead.');
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-search"></i> Search';
+}
+
+async function searchOpenFoodFacts(query) {
+    const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&json=1&page_size=24&fields=id,product_name,image_front_url,image_front_small_url,image_url,brands`;
+    const res = await fetch(url);
+    const data = await res.json();
+    return (data.products || [])
+        .filter(p => p.image_front_url || p.image_url)
+        .map(p => ({
+            url: p.image_front_url || p.image_url,
+            thumb: p.image_front_small_url || p.image_front_url || p.image_url,
+            name: [p.product_name, p.brands].filter(Boolean).join(' – '),
+            source: 'Open Food Facts'
+        }))
+        .filter(p => p.url)
+        .slice(0, 12);
+}
+
+async function searchUnsplash(query) {
+    // Use Picsum + keyword-based food images from reliable free CDNs
+    const foodKeywords = encodeURIComponent(query + ' food grocery');
+    return [
+        { url: `https://loremflickr.com/400/400/${encodeURIComponent(query)},food`, thumb: `https://loremflickr.com/200/200/${encodeURIComponent(query)},food`, name: `${query} - Food Photo 1`, source: 'Free Photos' },
+        { url: `https://loremflickr.com/400/400/${encodeURIComponent(query)},grocery`, thumb: `https://loremflickr.com/200/200/${encodeURIComponent(query)},grocery`, name: `${query} - Food Photo 2`, source: 'Free Photos' },
+        { url: `https://loremflickr.com/400/400/${encodeURIComponent(query)},product`, thumb: `https://loremflickr.com/200/200/${encodeURIComponent(query)},product`, name: `${query} - Product Photo`, source: 'Free Photos' },
+        { url: `https://loremflickr.com/400/400/${encodeURIComponent(query)},fresh`, thumb: `https://loremflickr.com/200/200/${encodeURIComponent(query)},fresh`, name: `${query} - Fresh Photo`, source: 'Free Photos' },
+    ];
+}
+
+function renderResults(results, query) {
+    if (!results.length) {
+        showStatus('img-error', 'fa-search-minus', 'No images found for "' + query + '". Try a shorter name or use URL tab.');
+        return;
+    }
+
+    const container = document.getElementById('imgResultsContainer');
+    container.innerHTML = `
+        <p style="font-size:12px;color:#666;margin-bottom:10px;font-weight:600;">
+            ${results.length} images found — click one to select:
+        </p>
+        <div class="img-results-grid" id="imgGrid"></div>`;
+
+    const grid = document.getElementById('imgGrid');
+
+    results.forEach((img, i) => {
+        const card = document.createElement('div');
+        card.className = 'img-result-card';
+        card.id = 'card' + i;
+
+        const tick = document.createElement('div');
+        tick.className = 'selected-tick';
+        tick.innerHTML = '<i class="fas fa-check"></i>';
+
+        const image = document.createElement('img');
+        image.alt = img.name || '';
+        image.loading = 'lazy';
+        image.style.cssText = 'width:100%;height:110px;object-fit:contain;background:#f5f5f5;padding:6px;display:block;';
+
+        // Try thumb first, fall back to full url
+        image.src = img.thumb || img.url;
+        image.onerror = function() {
+            // Try the full URL if thumb failed
+            if (this.src !== img.url) {
+                this.src = img.url;
+            } else {
+                // Both failed — hide the card
+                card.style.display = 'none';
+            }
+        };
+
+        const label = document.createElement('div');
+        label.className = 'img-card-label';
+        const shortName = (img.name || '').length > 35
+            ? (img.name || '').substring(0, 35) + '…'
+            : (img.name || '');
+        label.innerHTML = `${shortName}<span class="img-card-source">${img.source}</span>`;
+
+        card.appendChild(tick);
+        card.appendChild(image);
+        card.appendChild(label);
+
+        card.addEventListener('click', () => selectImage(img.url, img.name || '', i));
+        grid.appendChild(card);
+    });
+}
+
+function selectImage(url, name, i) {
+    document.querySelectorAll('.img-result-card').forEach(c => c.classList.remove('selected'));
+    document.getElementById('card'+i)?.classList.add('selected');
+    document.getElementById('finalImageUrl').value = url;
+    document.getElementById('selectedImgThumb').src = url;
+    document.getElementById('selectedImgUrl').textContent = url.length > 55 ? url.substring(0,55)+'…' : url;
+    document.getElementById('selectedImgPreview').style.display = 'flex';
+    if(typeof showToast === 'function') showToast('Image selected! ✅', 'success');
+}
+
+function clearSelectedImage() {
+    document.getElementById('finalImageUrl').value = '';
+    document.getElementById('selectedImgPreview').style.display = 'none';
+    document.querySelectorAll('.img-result-card').forEach(c => c.classList.remove('selected'));
+}
+
+function previewManualUrl(url) {
+    const wrap = document.getElementById('urlPreviewWrap');
+    const img = document.getElementById('urlPreviewImg');
+    if (url.startsWith('http')) { img.src = url; wrap.style.display = 'block'; }
+    else { wrap.style.display = 'none'; }
+}
+
+function useManualUrl() {
+    const url = document.getElementById('manualUrlInput').value.trim();
+    if (!url) { if(typeof showToast==='function') showToast('Please enter a URL', 'error'); return; }
+    document.getElementById('finalImageUrl').value = url;
+    if(typeof showToast==='function') showToast('URL saved as product image! ✅', 'success');
+}
+
+function previewUploadedImage(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = e => {
+            document.getElementById('uploadPreviewImg').src = e.target.result;
+            document.getElementById('uploadPreviewWrap').style.display = 'block';
+            document.getElementById('finalImageUrl').value = '';
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+function showStatus(cls, icon, msg) {
+    document.getElementById('imgResultsContainer').innerHTML =
+        `<div class="img-search-status ${cls}"><i class="fas ${icon}"></i>${msg}</div>`;
+}
+
+function updateSubcategories() {
+    const cat = document.getElementById('categorySelect').value;
+    const sel = document.getElementById('subcategorySelect');
+    sel.innerHTML = '<option value="">Select Subcategory</option>';
+    if (cat && CATEGORIES[cat]) {
+        CATEGORIES[cat].forEach(sub => {
+            const o = document.createElement('option');
+            o.value = o.textContent = sub;
+            sel.appendChild(o);
+        });
+    }
+}
+
+// Auto-fill search when typing product name
+document.getElementById('productNameInput').addEventListener('input', function() {
+    const s = document.getElementById('imgSearchInput');
+    if (!s.value) s.value = this.value;
+});
+
+window.addEventListener('DOMContentLoaded', () => {
+    const cat = document.getElementById('categorySelect').value;
+    if (cat) {
+        const currentSub = '{{ product.subcategory if product else "" }}';
+        updateSubcategories();
+        const sel = document.getElementById('subcategorySelect');
+        [...sel.options].forEach(o => { if (o.value === currentSub) o.selected = true; });
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+{% block title %}{% if category %}{{ category }}{% elif search %}Search: {{ search }}{% else %}All Products{% endif %} – {{ store_name }}{% endblock %}
+
+{% block content %}
+<div class="container page-container">
+    <!-- Breadcrumb -->
+    <nav class="breadcrumb">
+        <a href="{{ url_for('main.home') }}">Home</a> /
+        {% if category %}
+        <a href="{{ url_for('product.products', category=category) }}">{{ category }}</a>
+        {% if subcategory %}/ <span>{{ subcategory }}</span>{% endif %}
+        {% elif search %}
+        <span>Search: "{{ search }}"</span>
+        {% else %}
+        <span>All Products</span>
+        {% endif %}
+    </nav>
+
+    <div class="products-page-layout">
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="sidebar-section">
+                <h3>Categories</h3>
+                <ul class="sidebar-cat-list">
+                    <li><a href="{{ url_for('product.products') }}" class="{% if not category %}active{% endif %}">All Products</a></li>
+                    {% for cat, subs in categories.items() %}
+                    <li>
+                        <a href="{{ url_for('product.products', category=cat) }}"
+                           class="{% if category == cat %}active{% endif %}">
+                            {{ category_icons.get(cat, '📦') }} {{ cat }}
+                        </a>
+                        {% if category == cat %}
+                        <ul class="sidebar-sub-list">
+                            {% for sub in subs %}
+                            <li>
+                                <a href="{{ url_for('product.products', category=cat, subcategory=sub) }}"
+                                   class="{% if subcategory == sub %}active{% endif %}">{{ sub }}</a>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <div class="products-main">
+            <div class="products-header">
+                <h1>
+                    {% if subcategory %}{{ subcategory }}
+                    {% elif category %}{{ category }}
+                    {% elif search %}Results for "{{ search }}"
+                    {% else %}All Products{% endif %}
+                </h1>
+                <span class="product-count">{{ products|length }} products found</span>
+            </div>
+
+            {% if products %}
+            <div class="products-grid">
+                {% for product in products %}
+                {% include '_product_card.html' %}
+                {% endfor %}
+            </div>
+
+            <!-- Pagination -->
+            {% if total_pages > 1 %}
+            <div class="pagination">
+                {% if page > 1 %}
+                <a href="?{% if category %}category={{ category }}&{% endif %}{% if subcategory %}subcategory={{ subcategory }}&{% endif %}{% if search %}q={{ search }}&{% endif %}page={{ page - 1 }}" class="page-btn">
+                    <i class="fas fa-chevron-left"></i>
+                </a>
+                {% endif %}
+                {% for p in range(1, total_pages + 1) %}
+                <a href="?{% if category %}category={{ category }}&{% endif %}{% if subcategory %}subcategory={{ subcategory }}&{% endif %}{% if search %}q={{ search }}&{% endif %}page={{ p }}"
+                   class="page-btn {% if p == page %}active{% endif %}">{{ p }}</a>
+                {% endfor %}
+                {% if page < total_pages %}
+                <a href="?{% if category %}category={{ category }}&{% endif %}{% if subcategory %}subcategory={{ subcategory }}&{% endif %}{% if search %}q={{ search }}&{% endif %}page={{ page + 1 }}" class="page-btn">
+                    <i class="fas fa-chevron-right"></i>
+                </a>
+                {% endif %}
+            </div>
+            {% endif %}
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-icon">🔍</div>
+                <h2>No products found</h2>
+                <p>Try a different search term or browse our categories.</p>
+                <a href="{{ url_for('product.products') }}" class="btn-primary">Browse All Products</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
