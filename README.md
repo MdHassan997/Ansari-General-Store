@@ -168,4 +168,4 @@ Then log out and log back in. You'll see the **Admin Panel** link.
 - **Email**: Update `STORE_EMAIL` in `.env`
 - **Address**: Update `STORE_ADDRESS` in `.env`
 
-## grocerieshas231@
+
