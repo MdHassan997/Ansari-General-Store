@@ -1,5 +1,6 @@
 import requests
 from config import Config
+from utils.cache import cache_get, cache_set, cache_delete
 
 SUPABASE_URL = Config.SUPABASE_URL
 SERVICE_KEY = Config.SUPABASE_SERVICE_KEY or Config.SUPABASE_KEY
@@ -11,10 +12,18 @@ HEADERS = {
     "Prefer": "return=representation"
 }
 
+# Shared session for connection reuse
+_session = requests.Session()
+_session.headers.update(HEADERS)
+
+def _clear_cart_cache(user_id):
+    cache_delete(f"cart_count:{user_id}")
+    cache_delete(f"cart_items:{user_id}")
+
 def get_cart_items(user_id):
     try:
         url = f"{SUPABASE_URL}/rest/v1/cart?user_id=eq.{user_id}&select=*,products(*)"
-        res = requests.get(url, headers=HEADERS)
+        res = _session.get(url, timeout=8)
         return res.json() if res.status_code == 200 else []
     except Exception as e:
         print(f"get_cart_items error: {e}")
@@ -22,17 +31,17 @@ def get_cart_items(user_id):
 
 def add_to_cart(user_id, product_id, quantity=1):
     try:
-        # Check if exists
-        url = f"{SUPABASE_URL}/rest/v1/cart?user_id=eq.{user_id}&product_id=eq.{product_id}"
-        res = requests.get(url, headers=HEADERS)
-        existing = res.json()
+        check_url = f"{SUPABASE_URL}/rest/v1/cart?user_id=eq.{user_id}&product_id=eq.{product_id}"
+        res = _session.get(check_url, timeout=8)
+        existing = res.json() if res.status_code == 200 else []
         if existing and isinstance(existing, list) and len(existing) > 0:
             new_qty = existing[0]['quantity'] + quantity
-            patch_url = f"{SUPABASE_URL}/rest/v1/cart?user_id=eq.{user_id}&product_id=eq.{product_id}"
-            requests.patch(patch_url, json={"quantity": new_qty}, headers=HEADERS)
+            _session.patch(check_url, json={"quantity": new_qty}, timeout=8)
         else:
-            post_url = f"{SUPABASE_URL}/rest/v1/cart"
-            requests.post(post_url, json={"user_id": user_id, "product_id": product_id, "quantity": quantity}, headers=HEADERS)
+            _session.post(f"{SUPABASE_URL}/rest/v1/cart",
+                         json={"user_id": user_id, "product_id": product_id, "quantity": quantity},
+                         timeout=8)
+        _clear_cart_cache(user_id)
         return True
     except Exception as e:
         print(f"add_to_cart error: {e}")
@@ -40,12 +49,12 @@ def add_to_cart(user_id, product_id, quantity=1):
 
 def update_cart_quantity(user_id, product_id, quantity):
     try:
+        url = f"{SUPABASE_URL}/rest/v1/cart?user_id=eq.{user_id}&product_id=eq.{product_id}"
         if quantity <= 0:
-            url = f"{SUPABASE_URL}/rest/v1/cart?user_id=eq.{user_id}&product_id=eq.{product_id}"
-            requests.delete(url, headers=HEADERS)
+            _session.delete(url, timeout=8)
         else:
-            url = f"{SUPABASE_URL}/rest/v1/cart?user_id=eq.{user_id}&product_id=eq.{product_id}"
-            requests.patch(url, json={"quantity": quantity}, headers=HEADERS)
+            _session.patch(url, json={"quantity": quantity}, timeout=8)
+        _clear_cart_cache(user_id)
         return True
     except Exception as e:
         return False
@@ -53,7 +62,8 @@ def update_cart_quantity(user_id, product_id, quantity):
 def remove_from_cart(user_id, product_id):
     try:
         url = f"{SUPABASE_URL}/rest/v1/cart?user_id=eq.{user_id}&product_id=eq.{product_id}"
-        requests.delete(url, headers=HEADERS)
+        _session.delete(url, timeout=8)
+        _clear_cart_cache(user_id)
         return True
     except Exception as e:
         return False
@@ -61,26 +71,32 @@ def remove_from_cart(user_id, product_id):
 def clear_cart(user_id):
     try:
         url = f"{SUPABASE_URL}/rest/v1/cart?user_id=eq.{user_id}"
-        requests.delete(url, headers=HEADERS)
+        _session.delete(url, timeout=8)
+        _clear_cart_cache(user_id)
         return True
     except Exception as e:
         return False
 
 def get_cart_count(user_id):
+    """Cached cart count — avoids hitting Supabase on every page load"""
+    cache_key = f"cart_count:{user_id}"
+    cached = cache_get(cache_key)
+    if cached is not None:
+        return cached
     try:
         url = f"{SUPABASE_URL}/rest/v1/cart?user_id=eq.{user_id}&select=quantity"
-        res = requests.get(url, headers=HEADERS)
-        data = res.json()
-        if isinstance(data, list):
-            return sum(item.get('quantity', 0) for item in data)
-        return 0
+        res = _session.get(url, timeout=8)
+        data = res.json() if res.status_code == 200 else []
+        count = sum(item.get('quantity', 0) for item in (data if isinstance(data, list) else []))
+        cache_set(cache_key, count, ttl=30)  # Cache for 30 seconds
+        return count
     except Exception as e:
         return 0
 
 def get_wishlist(user_id):
     try:
         url = f"{SUPABASE_URL}/rest/v1/wishlist?user_id=eq.{user_id}&select=*,products(*)"
-        res = requests.get(url, headers=HEADERS)
+        res = _session.get(url, timeout=8)
         return res.json() if res.status_code == 200 else []
     except Exception as e:
         return []
@@ -88,10 +104,11 @@ def get_wishlist(user_id):
 def add_to_wishlist(user_id, product_id):
     try:
         check_url = f"{SUPABASE_URL}/rest/v1/wishlist?user_id=eq.{user_id}&product_id=eq.{product_id}"
-        res = requests.get(check_url, headers=HEADERS)
+        res = _session.get(check_url, timeout=8)
         if not res.json():
-            url = f"{SUPABASE_URL}/rest/v1/wishlist"
-            requests.post(url, json={"user_id": user_id, "product_id": product_id}, headers=HEADERS)
+            _session.post(f"{SUPABASE_URL}/rest/v1/wishlist",
+                         json={"user_id": user_id, "product_id": product_id},
+                         timeout=8)
         return True
     except Exception as e:
         return False
@@ -99,8 +116,7 @@ def add_to_wishlist(user_id, product_id):
 def remove_from_wishlist(user_id, product_id):
     try:
         url = f"{SUPABASE_URL}/rest/v1/wishlist?user_id=eq.{user_id}&product_id=eq.{product_id}"
-        requests.delete(url, headers=HEADERS)
+        _session.delete(url, timeout=8)
         return True
     except Exception as e:
         return False
-

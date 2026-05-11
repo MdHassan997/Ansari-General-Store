@@ -11,29 +11,53 @@
     </div>
 
     <!-- Search + Filter Bar -->
-    <div class="admin-search-bar" style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;align-items:center;">
-        <form method="GET" action="{{ url_for('admin.products') }}" style="display:flex;gap:10px;flex:1;min-width:280px;">
-            <div style="position:relative;flex:1;">
-                <i class="fas fa-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#888;font-size:13px;"></i>
-                <input type="text" name="q" value="{{ search }}"
-                       placeholder="Search products by name…"
-                       style="padding-left:36px;width:100%;border:1.5px solid #e0e0e0;border-radius:8px;padding-top:10px;padding-bottom:10px;font-size:14px;">
+    <div style="background:white;border:1.5px solid #e0e0e0;border-radius:12px;padding:16px 20px;margin-bottom:20px;">
+        <form method="GET" action="{{ url_for('admin.products') }}">
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+                <!-- Search Input -->
+                <div style="position:relative;flex:1;min-width:200px;">
+                    <i class="fas fa-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#888;font-size:13px;pointer-events:none;"></i>
+                    <input type="text" name="q" value="{{ search }}"
+                           placeholder="Search products by name…"
+                           style="padding-left:36px;padding-right:12px;padding-top:10px;padding-bottom:10px;width:100%;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;font-family:inherit;outline:none;"
+                           onfocus="this.style.borderColor='#2e7d32'" onblur="this.style.borderColor='#e0e0e0'">
+                </div>
+                <!-- Category Dropdown -->
+                <select name="category"
+                        style="border:1.5px solid #e0e0e0;border-radius:8px;padding:10px 14px;font-size:13px;font-family:inherit;min-width:180px;max-width:220px;background:white;outline:none;cursor:pointer;"
+                        onfocus="this.style.borderColor='#2e7d32'" onblur="this.style.borderColor='#e0e0e0'">
+                    <option value="">All Categories</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat }}" {% if selected_category == cat %}selected{% endif %}>{{ cat }}</option>
+                    {% endfor %}
+                </select>
+                <!-- Search Button -->
+                <button type="submit" class="btn-primary" style="padding:10px 20px;white-space:nowrap;flex-shrink:0;">
+                    <i class="fas fa-search"></i> Search
+                </button>
+                <!-- Clear Button -->
+                {% if search or selected_category %}
+                <a href="{{ url_for('admin.products') }}" class="btn-outline"
+                   style="padding:10px 14px;white-space:nowrap;flex-shrink:0;">
+                    <i class="fas fa-times"></i> Clear
+                </a>
+                {% endif %}
             </div>
-            <select name="category" style="border:1.5px solid #e0e0e0;border-radius:8px;padding:10px 14px;font-size:13px;min-width:160px;">
-                <option value="">All Categories</option>
-                {% for cat in categories %}
-                <option value="{{ cat }}" {% if selected_category == cat %}selected{% endif %}>{{ cat }}</option>
-                {% endfor %}
-            </select>
-            <button type="submit" class="btn-primary" style="padding:10px 18px;white-space:nowrap;">
-                <i class="fas fa-search"></i> Search
-            </button>
-            {% if search or selected_category %}
-            <a href="{{ url_for('admin.products') }}" class="btn-outline" style="padding:10px 14px;white-space:nowrap;">
-                <i class="fas fa-times"></i> Clear
-            </a>
-            {% endif %}
         </form>
+    </div>
+
+    <!-- Category Filter Chips (like before) -->
+    <div class="admin-filters" style="margin-bottom:16px;">
+        <a href="{{ url_for('admin.products') }}"
+           class="filter-btn {% if not selected_category %}active{% endif %}">
+            All
+        </a>
+        {% for cat in categories %}
+        <a href="{{ url_for('admin.products', category=cat) }}"
+           class="filter-btn {% if selected_category == cat %}active{% endif %}">
+            {{ cat }}
+        </a>
+        {% endfor %}
     </div>
 
     <!-- Results count -->
